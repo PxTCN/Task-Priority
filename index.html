@@ -144,6 +144,12 @@
   .modal-actions { display: flex; gap: 10px; }
   .modal-download { flex: 1; background: var(--accent); color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .modal-close { flex: 1; background: var(--card); color: var(--text-secondary); border: 1px solid var(--border); padding: 12px 16px; border-radius: 12px; font-size: 14px; cursor: pointer; }
+
+  /* Quick Add Task Form styles */
+  .form-group { text-align: left; margin-bottom: 14px; }
+  .form-label { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block; }
+  .form-input, .form-select { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; background: #FDFCFA; font-family: inherit; color: var(--text-primary); outline: none; }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -158,27 +164,81 @@
 <div id="save-modal-root"></div>
 
 <script>
+const DEFAULT_CATEGORIES = [
+  { id: "cat-work", name: "Work / Job", icon: "💼", bg: "#E8F1F5", text: "#1D3557" },
+  { id: "cat-personal", name: "Personal", icon: "🏠", bg: "#EAF2E8", text: "#386641" },
+  { id: "cat-health", name: "Health & Care", icon: "🌿", bg: "#FFF1E6", text: "#9C6644" },
+  { id: "cat-uncategorized", name: "General / Uncategorized", icon: "📌", bg: "#F3E8EE", text: "#722F37" }
+];
+
 const QUADRANT_META = {
-  do: { label: "Do now", th: "ทำเลย", sub: "Important + Urgent (สำคัญ + เร่งด่วน)", fill: "#AEC3A9", soft: "#EDF2EA", text: "#3C5340" },
-  schedule: { label: "Schedule", th: "วางแผน", sub: "Important + Not urgent (สำคัญ + ไม่เร่งด่วน)", fill: "#A9C0D6", soft: "#EBF1F6", text: "#33526E" },
-  delegate: { label: "Delegate", th: "มอบหมาย", sub: "Not important + Urgent (ไม่สำคัญ + เร่งด่วน)", fill: "#E3CBA1", soft: "#FBF4E8", text: "#6E5228" },
-  delete: { label: "Delete", th: "ตัดทิ้ง", sub: "Not important + Not urgent (ไม่สำคัญ + ไม่เร่งด่วน)", fill: "#D8ACA9", soft: "#F8ECEA", text: "#6E3A37" },
+  do: {
+    label: "Do First",
+    th: "ทำทันที",
+    sub: "Important & Urgent (สำคัญและเร่งด่วน)",
+    soft: "#EAF2E8",
+    fill: "#7C9885",
+    text: "#2D4A32"
+  },
+  schedule: {
+    label: "Schedule",
+    th: "วางแผนทำ",
+    sub: "Important, Not Urgent (สำคัญ แต่ไม่เร่งด่วน)",
+    soft: "#E8F1F5",
+    fill: "#6A8CAF",
+    text: "#1D3557"
+  },
+  delegate: {
+    label: "Delegate",
+    th: "มอบหมาย/แจกจ่าย",
+    sub: "Not Important, Urgent (ไม่สำคัญ แต่เร่งด่วน)",
+    soft: "#FFF1E6",
+    fill: "#DDA15E",
+    text: "#7B430B"
+  },
+  delete: {
+    label: "Eliminate",
+    th: "ตัดทิ้ง/ไว้ทีหลัง",
+    sub: "Not Important & Not Urgent (ไม่สำคัญ และไม่เร่งด่วน)",
+    soft: "#F3E8EE",
+    fill: "#BC6C25",
+    text: "#60241A"
+  }
 };
 
 const EFFORT_PRESETS = [
-  { key: "quick", rank: 0, label: "Quick · <15 min (เร็ว)", icon: "⚡" },
-  { key: "medium", rank: 1, label: "Medium · 15–60 min (ปานกลาง)", icon: "🕐" },
-  { key: "long", rank: 2, label: "Long · 1hr+ (นาน)", icon: "⏳" },
+  { key: "quick", label: "< 15 mins (เร็วมาก)", icon: "⚡", rank: 1 },
+  { key: "medium", label: "30-60 mins (ปานกลาง)", icon: "☕", rank: 2 },
+  { key: "deep", label: "> 2 hours / Deep Work (งานใหญ่)", icon: "🧠", rank: 3 }
 ];
 
-const DEFAULT_CATEGORIES = [
-  { id: "cat-1", name: "Work", icon: "💼", bg: "#E4E1F5", text: "#4B4382" },
-  { id: "cat-2", name: "Side hustle", icon: "🌱", bg: "#D9EDE3", text: "#2E6B4F" },
-  { id: "cat-3", name: "Personal", icon: "🏡", bg: "#F5E3D0", text: "#8A5A26" },
-  { id: "cat-4", name: "Health", icon: "🏃", bg: "#F0DCE3", text: "#8C3F58" },
-  { id: "cat-5", name: "Finance", icon: "💰", bg: "#D8E7F0", text: "#2E5F7A" },
-  { id: "cat-uncategorized", name: "Uncategorized", icon: "📌", bg: "#EFECE6", text: "#555048" },
-];
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function fmtEN(d) { return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+function fmtTH(d) { return d.toLocaleDateString("th-TH", { day: "numeric", month: "short" }); }
+
+function getDeadlinePresets() {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const endOfWeek = new Date(today);
+  endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+
+  return [
+    { key: "none", label: "No Date (ไม่ระบุวัน)", rank: 99 },
+    { key: "today", label: `Today (${fmtEN(today)})`, rank: 0 },
+    { key: "tomorrow", label: `Tomorrow (${fmtEN(tomorrow)})`, rank: 1 },
+    { key: "week", label: `This Week (${fmtEN(endOfWeek)})`, rank: 2 }
+  ];
+}
 
 let state = {
   stage: "dump", // "dump" | "categorize" | "sorting" | "result"
@@ -195,6 +255,7 @@ let state = {
   saving: false,
   categoryFilter: null,
   selectedTaskIdMobile: null, // For mobile tap-to-assign
+  showAddTaskModal: false, // Control for quick add modal on result screen
 };
 
 function setState(patch) {
@@ -204,6 +265,7 @@ function setState(patch) {
 
 function showToast(msg) {
   const t = document.getElementById("toast");
+  if (!t) return;
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(showToast._t);
@@ -211,16 +273,13 @@ function showToast(msg) {
 }
 
 function getCategoryObj(catId) {
-  return state.categories.find(c => c.id === catId) || state.categories.find(c => c.id === "cat-uncategorized");
+  return state.categories.find(c => c.id === catId) || state.categories.find(c => c.id === "cat-uncategorized") || state.categories[0];
 }
 
 function categoryStyle(catId) {
   const c = getCategoryObj(catId);
   return { bg: c.bg, text: c.text };
 }
-
-function fmtEN(d) { return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
-function fmtTH(d) { return d.toLocaleDateString("th-TH", { day: "numeric", month: "short" }); }
 
 function classify(important, urgent, soloSkill) {
   if (important && urgent) return { quadrant: "do", timeDrain: false };
@@ -239,7 +298,10 @@ function startCategorizing() {
     text: line,
     categoryId: "cat-uncategorized"
   }));
-  if (list.length === 0) return;
+  if (list.length === 0) {
+    showToast("Please enter at least one task! (กรุณาระบุอย่างน้อย 1 งานครับ)");
+    return;
+  }
   setState({ tasks: list, stage: "categorize", selectedTaskIdMobile: null });
 }
 
@@ -378,108 +440,74 @@ function resetApp() {
     categories: [...DEFAULT_CATEGORIES],
     pending: { important: null, urgent: null }, draft: null,
     chosenDeadline: undefined, tempEffort: undefined, customDatePick: "",
-    categoryFilter: null, selectedTaskIdMobile: null,
+    categoryFilter: null, selectedTaskIdMobile: null, showAddTaskModal: false,
   });
 }
 
-function waitForHtml2Canvas(timeoutMs) {
-  return new Promise((resolve) => {
-    if (window.html2canvas) return resolve(true);
-    const start = Date.now();
-    const iv = setInterval(() => {
-      if (window.html2canvas) { clearInterval(iv); resolve(true); }
-      else if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(false); }
-    }, 150);
-  });
-}
-
-async function handleSaveImage() {
+function handleSaveImage() {
+  const target = document.getElementById("result-capture");
+  if (!target) return;
   setState({ saving: true });
-  const ready = await waitForHtml2Canvas(4000);
-  if (!ready) {
-    setState({ saving: false });
-    showToast("Couldn't load image exporter. (ไม่สามารถโหลดเครื่องมือเซฟรูปได้)");
-    return;
-  }
-  const el = document.getElementById("result-capture");
-  if (!el) {
-    setState({ saving: false });
-    return;
-  }
-  try {
-    const canvas = await window.html2canvas(el, {
-      backgroundColor: "#FAF8F4",
-      scale: 2,
-      useCORS: true,
-      logging: false,
+
+  html2canvas(target, { scale: 2, useCORS: true, backgroundColor: "#FAF8F4" })
+    .then(canvas => {
+      const imgData = canvas.toDataURL("image/png");
+      const modalRoot = document.getElementById("save-modal-root");
+      if (modalRoot) {
+        modalRoot.innerHTML = `
+          <div class="modal-backdrop" id="img-modal-backdrop">
+            <div class="modal-box">
+              <h3 style="margin-top:0;margin-bottom:12px;color:var(--accent-deep);">Matrix Image Saved! (บันทึกรูปภาพเรียบร้อย)</h3>
+              <img src="${imgData}" alt="Task Matrix Preview" />
+              <div class="modal-hint">Click download or long-press/right-click image to save to device. (กด Download หรือกดค้างที่รูปเพื่อบันทึกได้เลย)</div>
+              <div class="modal-actions">
+                <a href="${imgData}" download="task-priority-matrix.png" class="modal-download">⬇ Download Image</a>
+                <button class="modal-close" id="close-save-modal">Close</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById("close-save-modal")?.addEventListener("click", () => {
+          modalRoot.innerHTML = "";
+        });
+        document.getElementById("img-modal-backdrop")?.addEventListener("click", (e) => {
+          if (e.target.id === "img-modal-backdrop") modalRoot.innerHTML = "";
+        });
+      }
+      showToast("Image generated! (สร้างรูปภาพเรียบร้อย)");
+    })
+    .catch(err => {
+      console.error(err);
+      showToast("Failed to capture image (เกิดข้อผิดพลาดในการสร้างรูป)");
+    })
+    .finally(() => {
+      setState({ saving: false });
     });
-    const dataUrl = canvas.toDataURL("image/png");
-    openSaveModal(dataUrl);
-  } catch (err) {
-    showToast("Couldn't save image. (เกิดข้อผิดพลาดในการบันทึกรูป)");
-  } finally {
-    setState({ saving: false });
-  }
-}
-
-function openSaveModal(dataUrl) {
-  const root = document.getElementById("save-modal-root");
-  root.innerHTML = `
-    <div class="modal-backdrop" id="modal-backdrop">
-      <div class="modal-box">
-        <img src="${dataUrl}" alt="Task priority matrix">
-        <div class="modal-hint">
-          Tap "Download" or long-press image to save.
-          <br>(กดปุ่ม "ดาวน์โหลด" หรือกดค้างที่รูปภาพเพื่อเซฟ)
-        </div>
-        <div class="modal-actions">
-          <a href="${dataUrl}" download="task-priority-matrix.png" class="modal-download">⬇ Download (ดาวน์โหลด)</a>
-          <button class="modal-close" id="modal-close-btn">Close (ปิด)</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.getElementById("modal-backdrop").addEventListener("click", (e) => {
-    if (e.target.id === "modal-backdrop") closeSaveModal();
-  });
-  document.getElementById("modal-close-btn").addEventListener("click", closeSaveModal);
-}
-
-function closeSaveModal() {
-  document.getElementById("save-modal-root").innerHTML = "";
-}
-
-function getDeadlinePresets() {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-  const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 6);
-  return [
-    { key: "today", rank: 0, label: `Today · ${fmtEN(today)} (วันนี้)` },
-    { key: "tomorrow", rank: 1, label: `Tomorrow · ${fmtEN(tomorrow)} (พรุ่งนี้)` },
-    { key: "week", rank: 6, label: `This week · by ${fmtEN(weekEnd)} (สัปดาห์นี้)` },
-    { key: "none", rank: 9999, label: "No date (ไม่ระบุวัน)" },
-  ];
-}
-
-function render() {
-  const app = document.getElementById("app");
-  if (state.stage === "dump") app.innerHTML = renderDump();
-  else if (state.stage === "categorize") app.innerHTML = renderCategorize();
-  else if (state.stage === "sorting") app.innerHTML = renderSorting();
-  else app.innerHTML = renderResult();
-  attachEvents();
 }
 
 function renderDump() {
+  const catBadges = state.categories.map(c => 
+    `<span style="font-size:12px;padding:4px 10px;border-radius:999px;background:${c.bg};color:${c.text};font-weight:500;display:inline-flex;align-items:center;gap:4px;">
+      ${c.icon} ${escapeHtml(c.name)}
+    </span>`
+  ).join(" ");
+
   return `
     <div class="fade-in">
       <div class="card">
-        <div class="helper">
-          Type all tasks on your mind (one task per line). Don't worry about categories or order yet.
-          <br><span style="color:var(--text-muted);">(พิมพ์งานทั้งหมดที่ติดค้างในหัว บรรทัดละหนึ่งงาน ไม่ต้องกังวลเรื่องหมวดหมู่หรือความสำคัญ)</span>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--accent-deep);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Step 1: Brain Dump (ขั้นตอนที่ 1: เทงานออกจากหัว)</div>
+          <div class="helper" style="margin-bottom:8px;">
+            Type all tasks on your mind below (one task per line). In the next step, you can drag & drop them into categories!
+            <br><span style="color:var(--text-muted);">(พิมพ์งานที่อยู่ในหัวลงในช่องด้านล่าง แล้วขั้นตอนถัดไปจะสามารถจัดแยกหมวดหมู่ได้ง่ายๆ ครับ)</span>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-secondary);font-weight:500;">Default Categories (หมวดหมู่เริ่มต้น):</span>
+            ${catBadges}
+          </div>
         </div>
         <textarea id="dump-input" rows="8" placeholder="e.g.&#10;Send Q3 sales report&#10;Buy groceries for dinner&#10;Review design mockups&#10;Schedule dental checkup"></textarea>
-        <button class="btn btn-primary" id="start-btn">Next: Organize Categories (ถัดไป: จัดหมวดหมู่) →</button>
+        <button class="btn btn-primary" id="start-btn">Next: Organize Categories (ขั้นตอนถัดไป: จัดหมวดหมู่) →</button>
       </div>
     </div>
   `;
@@ -691,29 +719,94 @@ function renderResult() {
     `;
   }).join("");
 
+  const addTaskModal = state.showAddTaskModal ? `
+    <div class="modal-backdrop" id="add-modal-backdrop">
+      <div class="modal-box" style="text-align:left;">
+        <h3 style="margin-top:0;margin-bottom:16px;color:var(--accent-deep);font-size:18px;">➕ Add New Task (เพิ่มงานใหม่)</h3>
+        
+        <div class="form-group">
+          <label class="form-label">Task Name (ชื่องาน)</label>
+          <input type="text" id="new-task-text" class="form-input" placeholder="e.g. Call client for feedback">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category (หมวดหมู่)</label>
+          <select id="new-task-cat" class="form-select">
+            ${state.categories.map(c => `<option value="${c.id}">${c.icon} ${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Priority Quadrant (ระดับความสำคัญ)</label>
+          <select id="new-task-quad" class="form-select">
+            <option value="do">Do now (ทำเลย - สำคัญ + เร่งด่วน)</option>
+            <option value="schedule">Schedule (วางแผน - สำคัญ + ไม่เร่งด่วน)</option>
+            <option value="delegate">Delegate (มอบหมาย - ไม่สำคัญ + เร่งด่วน)</option>
+            <option value="delete">Delete (ตัดทิ้ง - ไม่สำคัญ + ไม่เร่งด่วน)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Deadline (กำหนดส่ง - ถ้ามี)</label>
+          <select id="new-task-deadline" class="form-select">
+            <option value="none">No Date (ไม่ระบุวัน)</option>
+            <option value="today">Today (วันนี้)</option>
+            <option value="tomorrow">Tomorrow (พรุ่งนี้)</option>
+            <option value="week">This week (สัปดาห์นี้)</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-fill" id="confirm-add-task-btn" style="flex:1;">Add Task (เพิ่มงาน)</button>
+          <button class="btn btn-outline" id="close-add-modal-btn" style="flex:1;">Cancel (ยกเลิก)</button>
+        </div>
+      </div>
+    </div>
+  ` : "";
+
   return `
     <div class="fade-in">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <h2 style="font-size:18px;margin:0;color:var(--accent-deep);">Task Matrix Overview</h2>
+        <button class="btn btn-fill" id="open-add-task-btn" style="padding:8px 16px;font-size:13px;">➕ Add Task (เพิ่มงานใหม่)</button>
+      </div>
+
       ${filterRow}
       ${progressBar}
+      
       <div id="result-capture" style="background:#FAF8F4;padding:8px;border-radius:12px;">
         <div class="grid">${cards}</div>
         <div class="footer-note">
           This framework is based on <a href="https://asana.com/resources/eisenhower-matrix" target="_blank" rel="noreferrer">The Eisenhower Matrix</a> (อ้างอิงจาก Eisenhower Matrix)
         </div>
       </div>
+      
       <div class="actions">
         <button class="btn btn-fill" id="save-btn" ${state.saving ? "disabled" : ""}>⬇ ${state.saving ? "Saving... (กำลังบันทึก)" : "Save as image (เซฟเป็นรูป)"}</button>
         <button class="btn btn-outline" id="reset-btn">↺ Start over (เริ่มใหม่)</button>
       </div>
       <div class="tip">✨ Start with quick wins due soonest (เริ่มจากงานเร็วที่ใกล้วันที่สุดก่อน)</div>
+
+      ${addTaskModal}
     </div>
   `;
 }
 
-function escapeHtml(str) {
-  const d = document.createElement("div");
-  d.innerText = str;
-  return d.innerHTML;
+function render() {
+  const app = document.getElementById("app");
+  if (!app) return;
+
+  if (state.stage === "dump") {
+    app.innerHTML = renderDump();
+  } else if (state.stage === "categorize") {
+    app.innerHTML = renderCategorize();
+  } else if (state.stage === "sorting") {
+    app.innerHTML = renderSorting();
+  } else if (state.stage === "result") {
+    app.innerHTML = renderResult();
+  }
+
+  attachEvents();
 }
 
 function attachEvents() {
@@ -808,7 +901,7 @@ function attachEvents() {
   });
 
   document.querySelectorAll("[data-toggle-complete]").forEach(cb => {
-    cb.addEventListener("change", (e) => {
+    cb.addEventListener("change", () => {
       const taskId = cb.getAttribute("data-toggle-complete");
       toggleTaskComplete(taskId);
     });
@@ -821,13 +914,78 @@ function attachEvents() {
   const clearDateBtn = document.getElementById("clear-date-btn");
   if (clearDateBtn) clearDateBtn.addEventListener("click", () => setState({ chosenDeadline: undefined, customDatePick: "" }));
 
+  // Save / Reset buttons
   const saveBtn = document.getElementById("save-btn");
   if (saveBtn) saveBtn.addEventListener("click", handleSaveImage);
   const resetBtn = document.getElementById("reset-btn");
   if (resetBtn) resetBtn.addEventListener("click", resetApp);
+
+  // Quick Add Task modal handlers
+  const openAddBtn = document.getElementById("open-add-task-btn");
+  if (openAddBtn) {
+    openAddBtn.addEventListener("click", () => setState({ showAddTaskModal: true }));
+  }
+
+  const closeAddBtn = document.getElementById("close-add-modal-btn");
+  if (closeAddBtn) {
+    closeAddBtn.addEventListener("click", () => setState({ showAddTaskModal: false }));
+  }
+
+  const addBackdrop = document.getElementById("add-modal-backdrop");
+  if (addBackdrop) {
+    addBackdrop.addEventListener("click", (e) => {
+      if (e.target.id === "add-modal-backdrop") setState({ showAddTaskModal: false });
+    });
+  }
+
+  const confirmAddBtn = document.getElementById("confirm-add-task-btn");
+  if (confirmAddBtn) {
+    confirmAddBtn.addEventListener("click", () => {
+      const textInput = document.getElementById("new-task-text");
+      const catSelect = document.getElementById("new-task-cat");
+      const quadSelect = document.getElementById("new-task-quad");
+      const dSelect = document.getElementById("new-task-deadline");
+
+      const text = textInput ? textInput.value.trim() : "";
+      if (!text) {
+        showToast("Please enter task name (กรุณาระบุชื่องาน)");
+        return;
+      }
+
+      const catObj = getCategoryObj(catSelect.value);
+      const quad = quadSelect.value;
+      const dKey = dSelect.value;
+
+      let deadlineObj = null;
+      if (dKey !== "none") {
+        const presets = getDeadlinePresets();
+        deadlineObj = presets.find(p => p.key === dKey) || null;
+      }
+
+      const newTask = {
+        id: `task-${Date.now()}`,
+        text,
+        categoryId: catObj.id,
+        categoryName: catObj.name,
+        categoryIcon: catObj.icon,
+        quadrant: quad,
+        timeDrain: false,
+        deadline: deadlineObj,
+        effort: null,
+        completed: false
+      };
+
+      setState({
+        results: [...state.results, newTask],
+        showAddTaskModal: false
+      });
+
+      showToast("Added new task successfully! (เพิ่มงานใหม่เรียบร้อยแล้ว)");
+    });
+  }
 }
 
-// Initial Render
+// Initial Application Render
 render();
 </script>
 </body>
