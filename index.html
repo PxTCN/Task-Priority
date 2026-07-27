@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Task Priority (จัดลำดับให้เบาใจ)</title>
+<title>Task Priority Matrix (จัดลำดับให้เบาใจ)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -16,43 +16,45 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); font-family: 'Google Sans', sans-serif; color: var(--text-primary); }
-  .wrap { max-width: 640px; margin: 0 auto; padding: 48px 20px 64px; }
-  .header { text-align: center; margin-bottom: 40px; }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 40px 20px 64px; }
+  .header { text-align: center; margin-bottom: 32px; }
   .header h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--accent-deep); margin: 0; }
   .header h1 span { font-weight: 400; }
   .header p { font-size: 13.5px; color: var(--text-secondary); margin-top: 6px; }
 
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
-  .helper { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+  .helper { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
   textarea {
     width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 16px;
     font-size: 15px; color: var(--text-primary); background: #FDFCFA; resize: vertical;
-    outline: none; font-family: inherit;
+    outline: none; font-family: inherit; line-height: 1.6;
   }
+  textarea:focus { border-color: var(--accent); }
   .btn {
-    border: none; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    border: none; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.15s ease;
   }
-  .btn:hover { transform: translateY(-2px); }
+  .btn:hover { transform: translateY(-1px); }
   .btn:active { transform: translateY(0); }
-  .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 14px 20px; margin-top: 16px; }
-  .btn-outline { background: var(--card); color: var(--text-secondary); border: 1px solid var(--border); flex: 1; padding: 13px 16px; }
-  .btn-fill { background: var(--accent); color: #fff; flex: 1; padding: 13px 16px; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 14px 20px; margin-top: 16px; font-size: 15px; font-weight: 600; }
+  .btn-outline { background: var(--card); color: var(--text-secondary); border: 1px solid var(--border); padding: 12px 18px; }
+  .btn-fill { background: var(--accent); color: #fff; padding: 12px 18px; }
   .btn-fill:disabled { opacity: 0.6; cursor: default; }
 
-  .dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 28px; }
+  /* Dots Progress */
+  .dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 24px; }
   .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--border); }
   .dot.done { background: var(--accent); }
-  .dot.current { background: var(--accent-deep); }
+  .dot.current { background: var(--accent-deep); width: 16px; transition: width 0.2s ease; }
 
+  /* Breathing circle animation */
   .q-wrap { position: relative; display: flex; justify-content: center; margin-bottom: 20px; }
   .breathe {
     position: absolute; width: 180px; height: 180px; border-radius: 50%;
     background: var(--accent); opacity: 0.12; top: -20px; animation: breathe 4s ease-in-out infinite;
   }
   @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.55; } 50% { transform: scale(1.06); opacity: 0.85; } }
-  @media (prefers-reduced-motion: reduce) { .breathe, .fade-in { animation: none; } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .fade-in { animation: fadeIn 0.35s ease both; }
 
@@ -61,8 +63,31 @@
   .q-task { font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 20px; line-height: 1.5; }
   .q-text { font-size: 15px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.6; }
   .q-text .th { font-size: 13px; opacity: 0.85; }
-  .section-label { font-size: 13px; color: var(--text-secondary); margin: 16px 0 8px; }
 
+  /* Drag & Drop Board styling */
+  .cat-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 16px; }
+  .cat-col { background: #F7F5F0; border: 1.5px dashed var(--border); border-radius: 14px; padding: 14px; min-height: 150px; display: flex; flex-direction: column; transition: background 0.2s ease; }
+  .cat-col.drag-over { background: #EFECE3; border-color: var(--accent); }
+  .cat-col-header { font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .cat-col-count { font-size: 11px; font-weight: 500; background: var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 999px; }
+  .cat-col-tasks { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  
+  .task-draggable {
+    background: #FFFFFF; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; font-weight: 500; cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    user-select: none; transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .task-draggable:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.06); }
+  .task-draggable:active { cursor: grabbing; }
+
+  .add-cat-btn {
+    display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px dashed var(--accent);
+    color: var(--accent-deep); padding: 8px 14px; border-radius: 999px; font-size: 13px; cursor: pointer; font-weight: 500; margin-top: 12px;
+  }
+  .add-cat-btn:hover { background: rgba(124,152,133,0.08); }
+
+  /* Option buttons and grids */
   .yn-row { display: flex; gap: 12px; justify-content: center; }
   .yn-btn { flex: 1; max-width: 140px; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: transform 0.15s ease; }
   .yn-btn:hover { transform: translateY(-2px); }
@@ -70,78 +95,62 @@
   .yn-yes { border: 1px solid var(--accent); background: var(--accent); color: #fff; }
 
   .quad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-  .quad-btn {
-    border-radius: 14px; padding: 16px 10px; cursor: pointer; font-size: 13.5px; font-weight: 600;
-    border: 1.5px solid transparent; transition: transform 0.15s ease;
-  }
+  .quad-btn { border-radius: 14px; padding: 16px 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; border: 1.5px solid transparent; transition: transform 0.15s ease; }
   .quad-btn:hover { transform: translateY(-2px); }
   .quad-sub { font-size: 10.5px; font-weight: 400; opacity: 0.8; margin-top: 2px; }
   .link-btn { font-size: 13px; color: var(--accent-deep); text-decoration: underline; cursor: pointer; display: inline-block; }
 
-  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 6px; }
-  .chip {
-    padding: 9px 15px; border-radius: 999px; border: 1px solid var(--border); background: #FDFCFA;
-    font-size: 12.5px; color: var(--text-secondary); cursor: pointer; transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-  }
-  .chip:hover { transform: translateY(-1px); }
-  .chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .chip-block {
-    padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: #FDFCFA;
-    font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center;
-    gap: 8px; justify-content: center; transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-  }
-  .chip-block:hover { transform: translateY(-1px); }
-  .chip-block.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .small-muted { font-size: 11.5px; color: var(--text-muted); margin: 8px 0 6px; }
-  input[type="date"] { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--text-primary); background: #FDFCFA; font-family: inherit; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .cat-chip { padding: 6px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: #FFFFFF; color: var(--text-secondary); transition: all 0.15s ease; }
+  .cat-chip.active { background: var(--accent-deep); color: #FFF; border-color: var(--accent-deep); }
 
+  .chip { padding: 9px 15px; border-radius: 999px; border: 1px solid var(--border); background: #FDFCFA; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+  .chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip-block { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: #FDFCFA; font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 8px; justify-content: center; }
+  .chip-block.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Output Cards and Checkboxes */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
   .qcard { border-radius: 16px; padding: 16px; min-height: 140px; border: 1px solid; }
   .qcard-title { font-size: 15px; font-weight: 600; }
   .qcard-sub { font-size: 11px; opacity: 0.7; margin-bottom: 10px; }
-  .qcard-empty { font-size: 12.5px; opacity: 0.5; }
-  .item { background: rgba(255,255,255,0.6); border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 6px; line-height: 1.4; }
+  .qcard-empty { font-size: 12.5px; opacity: 0.5; text-align: center; padding: 20px 0; }
+  
+  .item { background: rgba(255,255,255,0.85); border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 8px; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s ease; }
+  .item.completed { opacity: 0.55; background: rgba(245,245,245,0.7); }
+  .task-checkbox { width: 18px; height: 18px; accent-color: var(--accent-deep); cursor: pointer; margin-top: 1px; flex-shrink: 0; }
   .item-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
-  .badge { font-size: 10px; white-space: nowrap; border-radius: 999px; padding: 2px 8px; opacity: 0.9; }
-  .item-effort { font-size: 10.5px; opacity: 0.7; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
-  .item-drain { font-size: 10.5px; opacity: 0.75; margin-top: 4px; }
+  .badge { font-size: 10px; white-space: nowrap; border-radius: 999px; padding: 2px 8px; opacity: 0.9; font-weight: 500; }
+  .item-effort { font-size: 10.5px; opacity: 0.75; display: inline-flex; align-items: center; gap: 4px; }
+  .item-drain { font-size: 10.5px; opacity: 0.8; margin-top: 4px; color: #8C3F58; font-weight: 500; }
 
   .footer-note { margin-top: 16px; text-align: center; font-size: 11.5px; color: var(--text-muted); }
   .footer-note a { color: var(--accent-deep); }
   .actions { display: flex; gap: 10px; margin-top: 20px; }
   .tip { margin-top: 16px; text-align: center; font-size: 12.5px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  
   #toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #33322D; color: #fff;
     padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
     max-width: 90%; text-align: center; z-index: 999;
   }
   #toast.show { opacity: 1; }
-  .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(51,50,45,0.55); z-index: 1000;
-    display: flex; align-items: center; justify-content: center; padding: 20px;
-  }
-  .modal-box {
-    background: var(--card); border-radius: 18px; padding: 20px; max-width: 480px; width: 100%;
-    max-height: 90vh; overflow-y: auto; text-align: center;
-  }
+
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(51,50,45,0.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-box { background: var(--card); border-radius: 18px; padding: 20px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; text-align: center; }
   .modal-box img { width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 14px; }
   .modal-hint { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6; }
   .modal-actions { display: flex; gap: 10px; }
-  .modal-download {
-    flex: 1; background: var(--accent); color: #fff; text-decoration: none; padding: 12px 16px;
-    border-radius: 12px; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .modal-close {
-    flex: 1; background: var(--card); color: var(--text-secondary); border: 1px solid var(--border);
-    padding: 12px 16px; border-radius: 12px; font-size: 14px; cursor: pointer;
-  }
+  .modal-download { flex: 1; background: var(--accent); color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .modal-close { flex: 1; background: var(--card); color: var(--text-secondary); border: 1px solid var(--border); padding: 12px 16px; border-radius: 12px; font-size: 14px; cursor: pointer; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="header">
     <h1>Task Priority <span>(จัดลำดับให้เบาใจ)</span></h1>
-    <p>Empty your head first, then sort one at a time (เทให้หมดหัว แล้วค่อยจัดทีละงาน)</p>
+    <p>Empty your head first, organize easily, then prioritize (เทงานออกจากหัว สรุปหมวดหมู่ แล้วค่อยจัดลำดับ)</p>
   </div>
   <div id="app"></div>
 </div>
@@ -159,43 +168,55 @@ const QUADRANT_META = {
 const EFFORT_PRESETS = [
   { key: "quick", rank: 0, label: "Quick · <15 min (เร็ว)", icon: "⚡" },
   { key: "medium", rank: 1, label: "Medium · 15–60 min (ปานกลาง)", icon: "🕐" },
-  { key: "long", rank: 2, label: "Long · 1hr+ (นาน)", icon: "🕐" },
+  { key: "long", rank: 2, label: "Long · 1hr+ (นาน)", icon: "⏳" },
 ];
 
-const CATEGORY_PALETTE = [
-  { bg: "#E4E1F5", text: "#4B4382" },
-  { bg: "#D9EDE3", text: "#2E6B4F" },
-  { bg: "#F5E3D0", text: "#8A5A26" },
-  { bg: "#F0DCE3", text: "#8C3F58" },
-  { bg: "#D8E7F0", text: "#2E5F7A" },
-  { bg: "#EDE7D0", text: "#6B5F26" },
+const DEFAULT_CATEGORIES = [
+  { id: "cat-1", name: "Work", icon: "💼", bg: "#E4E1F5", text: "#4B4382" },
+  { id: "cat-2", name: "Side hustle", icon: "🌱", bg: "#D9EDE3", text: "#2E6B4F" },
+  { id: "cat-3", name: "Personal", icon: "🏡", bg: "#F5E3D0", text: "#8A5A26" },
+  { id: "cat-4", name: "Health", icon: "🏃", bg: "#F0DCE3", text: "#8C3F58" },
+  { id: "cat-5", name: "Finance", icon: "💰", bg: "#D8E7F0", text: "#2E5F7A" },
+  { id: "cat-uncategorized", name: "Uncategorized", icon: "📌", bg: "#EFECE6", text: "#555048" },
 ];
 
-function categoryStyle(cat) {
-  if (!cat) return null;
-  let hash = 0;
-  for (let i = 0; i < cat.length; i++) hash = (hash * 31 + cat.charCodeAt(i)) >>> 0;
-  return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+let state = {
+  stage: "dump", // "dump" | "categorize" | "sorting" | "result"
+  tasks: [], // { id, text, categoryId }
+  categories: [...DEFAULT_CATEGORIES],
+  index: 0,
+  qStep: 0,
+  pending: { important: null, urgent: null },
+  draft: null,
+  chosenDeadline: undefined,
+  tempEffort: undefined,
+  customDatePick: "",
+  results: [], // { id, text, categoryId, categoryName, categoryIcon, quadrant, timeDrain, deadline, effort, completed }
+  saving: false,
+  categoryFilter: null,
+  selectedTaskIdMobile: null, // For mobile tap-to-assign
+};
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  render();
 }
 
-function parseTaskLine(raw, id) {
-  const match = raw.match(/#(\S+)/);
-  const category = match ? match[1].trim() : null;
-  const text = raw.replace(/#\S+/g, "").replace(/\s+/g, " ").trim();
-  return { id, text: text || raw.trim(), category };
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove("show"), 3500);
 }
 
-const CATEGORY_OPTIONS = [
-  { value: "", label: "No category (ไม่ระบุ)" },
-  { value: "Work", label: "💼 Work (งานประจำ)" },
-  { value: "Side hustle", label: "🌱 Side hustle (งานเสริม)" },
-  { value: "Health", label: "🏃 Health (สุขภาพ)" },
-  { value: "Personal", label: "🏡 Personal (ส่วนตัว)" },
-];
+function getCategoryObj(catId) {
+  return state.categories.find(c => c.id === catId) || state.categories.find(c => c.id === "cat-uncategorized");
+}
 
-function categoryDisplayLabel(val) {
-  const found = CATEGORY_OPTIONS.find(o => o.value === val);
-  return found ? found.label.split(" (")[0] : val;
+function categoryStyle(catId) {
+  const c = getCategoryObj(catId);
+  return { bg: c.bg, text: c.text };
 }
 
 function fmtEN(d) { return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
@@ -210,41 +231,54 @@ function classify(important, urgent, soloSkill) {
   return { quadrant: "delete", timeDrain: false };
 }
 
-let state = {
-  stage: "dump",
-  tasks: [],
-  index: 0,
-  qStep: 0, // 0 = quick classify, 1-3 = guided, 4 = schedule
-  pending: { important: null, urgent: null },
-  draft: null,
-  chosenDeadline: undefined,
-  tempEffort: undefined,
-  customDatePick: "",
-  results: [],
-  saving: false,
-  categoryFilter: null,
-  tempCategory: undefined,
-};
-
-function setState(patch) { state = { ...state, ...patch }; render(); }
-
-function showToast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => t.classList.remove("show"), 3500);
-}
-
-function startSorting() {
+function startCategorizing() {
   const ta = document.getElementById("dump-input");
   const raw = ta ? ta.value : "";
-  const list = raw.split("\n").map(t => t.trim()).filter(Boolean).map((line, i) => parseTaskLine(line, i));
+  const list = raw.split("\n").map(t => t.trim()).filter(Boolean).map((line, i) => ({
+    id: `task-${Date.now()}-${i}`,
+    text: line,
+    categoryId: "cat-uncategorized"
+  }));
   if (list.length === 0) return;
+  setState({ tasks: list, stage: "categorize", selectedTaskIdMobile: null });
+}
+
+function assignTaskCategory(taskId, categoryId) {
+  const updated = state.tasks.map(t => t.id === taskId ? { ...t, categoryId } : t);
+  setState({ tasks: updated, selectedTaskIdMobile: null });
+}
+
+function addNewCategoryPrompt() {
+  const name = prompt("Enter category name (ระบุชื่อหมวดหมู่ใหม่):");
+  if (!name || !name.trim()) return;
+  const icon = prompt("Enter an emoji icon (ใส่อิโมจิสัญลักษณ์ เช่น 📚, 🛒):") || "🏷️";
+  
+  const colors = [
+    { bg: "#EAF2E8", text: "#386641" },
+    { bg: "#F3E8EE", text: "#722F37" },
+    { bg: "#E8F1F5", text: "#1D3557" },
+    { bg: "#FFF1E6", text: "#9C6644" }
+  ];
+  const color = colors[state.categories.length % colors.length];
+
+  const newCat = {
+    id: `cat-${Date.now()}`,
+    name: name.trim(),
+    icon,
+    bg: color.bg,
+    text: color.text
+  };
+
+  setState({ categories: [...state.categories, newCat] });
+}
+
+function startPrioritySorting() {
+  if (state.tasks.length === 0) return;
   setState({
-    tasks: list, results: [], index: 0, qStep: 0,
+    stage: "sorting",
+    results: [], index: 0, qStep: 0,
     pending: { important: null, urgent: null }, draft: null,
-    chosenDeadline: undefined, tempEffort: undefined, customDatePick: "", tempCategory: undefined, stage: "sorting",
+    chosenDeadline: undefined, tempEffort: undefined, customDatePick: "",
     categoryFilter: null,
   });
 }
@@ -253,7 +287,7 @@ function advanceOrFinish() {
   if (state.index + 1 < state.tasks.length) {
     setState({
       index: state.index + 1, qStep: 0, pending: { important: null, urgent: null },
-      draft: null, chosenDeadline: undefined, tempEffort: undefined, customDatePick: "", tempCategory: undefined,
+      draft: null, chosenDeadline: undefined, tempEffort: undefined, customDatePick: "",
     });
   } else {
     setState({ stage: "result" });
@@ -262,13 +296,27 @@ function advanceOrFinish() {
 
 function finalizeAll(info, deadline, effort) {
   const task = state.tasks[state.index];
-  const category = state.tempCategory !== undefined ? (state.tempCategory || null) : (task.category || null);
-  const newResult = { ...task, quadrant: info.quadrant, timeDrain: info.timeDrain, deadline, effort, category };
+  const catObj = getCategoryObj(task.categoryId);
+  const newResult = { 
+    ...task, 
+    quadrant: info.quadrant, 
+    timeDrain: info.timeDrain, 
+    deadline, 
+    effort, 
+    categoryName: catObj.name,
+    categoryIcon: catObj.icon,
+    categoryId: catObj.id,
+    completed: false
+  };
   state.results = [...state.results, newResult];
   advanceOrFinish();
 }
 
-// --- Quick tap path ---
+function toggleTaskComplete(taskId) {
+  const updated = state.results.map(r => r.id === taskId ? { ...r, completed: !r.completed } : r);
+  setState({ results: updated });
+}
+
 function tapQuadrant(key) {
   if (key === "delete") {
     finalizeAll({ quadrant: "delete", timeDrain: false }, null, null);
@@ -279,7 +327,6 @@ function tapQuadrant(key) {
 
 function startGuided() { setState({ qStep: 1 }); }
 
-// --- Guided path ---
 function answerImportant(val) { setState({ pending: { ...state.pending, important: val }, qStep: 2 }); }
 
 function proceedAfterCoreAnswers(p, soloSkill) {
@@ -303,7 +350,6 @@ function answerUrgent(val) {
 
 function answerSoloSkill(val) { proceedAfterCoreAnswers(state.pending, val); }
 
-// --- Schedule (deadline + effort combined) ---
 function selectDeadlinePreset(preset) {
   setState({ chosenDeadline: preset.key === "none" ? null : preset, customDatePick: "" });
 }
@@ -329,13 +375,13 @@ function skipScheduling() { finalizeAll(state.draft, null, null); }
 function resetApp() {
   setState({
     stage: "dump", tasks: [], results: [], index: 0, qStep: 0,
+    categories: [...DEFAULT_CATEGORIES],
     pending: { important: null, urgent: null }, draft: null,
-    chosenDeadline: undefined, tempEffort: undefined, customDatePick: "", tempCategory: undefined,
-    categoryFilter: null,
+    chosenDeadline: undefined, tempEffort: undefined, customDatePick: "",
+    categoryFilter: null, selectedTaskIdMobile: null,
   });
 }
 
-// --- Save as image ---
 function waitForHtml2Canvas(timeoutMs) {
   return new Promise((resolve) => {
     if (window.html2canvas) return resolve(true);
@@ -352,13 +398,12 @@ async function handleSaveImage() {
   const ready = await waitForHtml2Canvas(4000);
   if (!ready) {
     setState({ saving: false });
-    showToast("Couldn't load the image tool. Check your internet connection and try again. (โหลดเครื่องมือบันทึกรูปไม่ได้ ลองเช็คอินเทอร์เน็ตแล้วลองใหม่)");
+    showToast("Couldn't load image exporter. (ไม่สามารถโหลดเครื่องมือเซฟรูปได้)");
     return;
   }
   const el = document.getElementById("result-capture");
   if (!el) {
     setState({ saving: false });
-    showToast("Something went wrong finding the content to save. Please try again. (หาส่วนที่จะเซฟไม่เจอ ลองใหม่อีกครั้ง)");
     return;
   }
   try {
@@ -366,14 +411,12 @@ async function handleSaveImage() {
       backgroundColor: "#FAF8F4",
       scale: 2,
       useCORS: true,
-      allowTaint: true,
       logging: false,
     });
     const dataUrl = canvas.toDataURL("image/png");
     openSaveModal(dataUrl);
   } catch (err) {
-    console.error(err);
-    showToast("Couldn't save the image: " + (err && err.message ? err.message : "unknown error") + " (บันทึกรูปไม่สำเร็จ)");
+    showToast("Couldn't save image. (เกิดข้อผิดพลาดในการบันทึกรูป)");
   } finally {
     setState({ saving: false });
   }
@@ -386,8 +429,8 @@ function openSaveModal(dataUrl) {
       <div class="modal-box">
         <img src="${dataUrl}" alt="Task priority matrix">
         <div class="modal-hint">
-          Tap "Download" below. On phones, if nothing happens, press and hold the image and choose "Save Image."
-          <br>(กดปุ่ม "ดาวน์โหลด" ด้านล่าง ถ้าเป็นมือถือแล้วไม่มีอะไรเกิดขึ้น ให้กดค้างที่รูปแล้วเลือก "บันทึกรูปภาพ")
+          Tap "Download" or long-press image to save.
+          <br>(กดปุ่ม "ดาวน์โหลด" หรือกดค้างที่รูปภาพเพื่อเซฟ)
         </div>
         <div class="modal-actions">
           <a href="${dataUrl}" download="task-priority-matrix.png" class="modal-download">⬇ Download (ดาวน์โหลด)</a>
@@ -421,6 +464,7 @@ function getDeadlinePresets() {
 function render() {
   const app = document.getElementById("app");
   if (state.stage === "dump") app.innerHTML = renderDump();
+  else if (state.stage === "categorize") app.innerHTML = renderCategorize();
   else if (state.stage === "sorting") app.innerHTML = renderSorting();
   else app.innerHTML = renderResult();
   attachEvents();
@@ -430,11 +474,53 @@ function renderDump() {
   return `
     <div class="fade-in">
       <div class="card">
-        <div class="helper">Type everything on your mind, one task per line. Don't judge yet. (พิมพ์งานทั้งหมดที่ค้างในหัว บรรทัดละหนึ่งงาน ยังไม่ต้องคิดว่าอันไหนสำคัญ)
-          <br><span style="opacity:0.85">You'll pick a category from a dropdown as you sort — no typing needed (จะเลือกหมวดหมู่จาก dropdown ทีหลังตอนจัดลำดับ ไม่ต้องพิมพ์เพิ่ม)</span>
+        <div class="helper">
+          Type all tasks on your mind (one task per line). Don't worry about categories or order yet.
+          <br><span style="color:var(--text-muted);">(พิมพ์งานทั้งหมดที่ติดค้างในหัว บรรทัดละหนึ่งงาน ไม่ต้องกังวลเรื่องหมวดหมู่หรือความสำคัญ)</span>
         </div>
-        <textarea id="dump-input" rows="8" placeholder="e.g.&#10;Send report to client A&#10;Reply to HR email&#10;Morning run&#10;Sketch new design"></textarea>
-        <button class="btn btn-primary" id="start-btn">Start sorting (เริ่มจัดลำดับ) →</button>
+        <textarea id="dump-input" rows="8" placeholder="e.g.&#10;Send Q3 sales report&#10;Buy groceries for dinner&#10;Review design mockups&#10;Schedule dental checkup"></textarea>
+        <button class="btn btn-primary" id="start-btn">Next: Organize Categories (ถัดไป: จัดหมวดหมู่) →</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCategorize() {
+  const cols = state.categories.map(cat => {
+    const tasksInCat = state.tasks.filter(t => t.categoryId === cat.id);
+    const tasksHtml = tasksInCat.map(t => `
+      <div class="task-draggable" draggable="true" data-task-id="${t.id}">
+        <span>${escapeHtml(t.text)}</span>
+        <span style="font-size:10px;color:var(--text-muted);">::</span>
+      </div>
+    `).join("");
+
+    return `
+      <div class="cat-col" data-cat-id="${cat.id}">
+        <div class="cat-col-header" style="color:${cat.text}">
+          <span>${cat.icon} ${escapeHtml(cat.name)}</span>
+          <span class="cat-col-count">${tasksInCat.length}</span>
+        </div>
+        <div class="cat-col-tasks">${tasksHtml}</div>
+        ${state.selectedTaskIdMobile ? `<button class="btn btn-outline" style="margin-top:8px;padding:6px;font-size:11px;" data-assign-mobile="${cat.id}">+ Move here (ย้ายมานี่)</button>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="fade-in">
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2 style="font-size:18px;margin:0;color:var(--accent-deep);">Organize Categories (จัดหมวดหมู่งาน)</h2>
+            <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px;">Drag tasks into categories or tap a task then select category. (ลากงานเข้าหมวด หรือแตะงานเพื่อเลือกย้าย)</div>
+          </div>
+          <button class="add-cat-btn" id="add-cat-btn">+ Add Category (เพิ่มหมวดหมู่)</button>
+        </div>
+
+        <div class="cat-board">${cols}</div>
+
+        <button class="btn btn-primary" id="start-sort-btn" style="margin-top:24px;">Start Priority Sorting (เริ่มจัดลำดับความสำคัญ) →</button>
       </div>
     </div>
   `;
@@ -443,6 +529,8 @@ function renderDump() {
 function renderSorting() {
   const task = state.tasks[state.index];
   if (!task) return "";
+  const catObj = getCategoryObj(task.categoryId);
+
   const dots = state.tasks.map((_, i) => {
     const cls = i < state.index ? "done" : i === state.index ? "current" : "";
     return `<div class="dot ${cls}"></div>`;
@@ -459,11 +547,7 @@ function renderSorting() {
               </div>`;
     }).join("");
     block = `
-      <div class="section-label" style="margin-top:0;">Category (หมวดหมู่ - ไม่บังคับ)</div>
-      <select id="category-select" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#FDFCFA;font-size:13.5px;color:var(--text-primary);font-family:inherit;margin-bottom:16px;">
-        ${CATEGORY_OPTIONS.map(o => `<option value="${escapeHtml(o.value)}" ${(state.tempCategory !== undefined ? (state.tempCategory || "") : (task.category || "")) === o.value ? "selected" : ""}>${o.label}</option>`).join("")}
-      </select>
-      <div class="q-text" style="margin-bottom:14px;">Where does this belong? Tap if you already know. <span class="th">(อยู่หมวดไหน? แตะได้เลยถ้ารู้อยู่แล้ว)</span></div>
+      <div class="q-text" style="margin-bottom:14px;">Where does this belong? Tap if you already know. <span class="th">(อยู่หมวดความสำคัญไหน?)</span></div>
       <div class="quad-grid">${quadBtns}</div>
       <div class="link-btn" id="guided-btn">Not sure? Answer 2 quick questions (ไม่แน่ใจ? ตอบ 2 คำถามช่วยตัดสินใจ)</div>
     `;
@@ -504,21 +588,21 @@ function renderSorting() {
 
     let dateArea = "";
     if (state.chosenDeadline && state.chosenDeadline.key === "custom") {
-      dateArea = `<div class="small-muted">Due: ${state.chosenDeadline.label} — <span class="link-btn" id="clear-date-btn">change</span></div>`;
+      dateArea = `<div style="font-size:12px;color:var(--text-secondary);margin:6px 0;">Due: <strong>${state.chosenDeadline.label}</strong> — <span class="link-btn" id="clear-date-btn">change</span></div>`;
     } else {
       dateArea = `
-        <div class="small-muted">Or pick a date (หรือเลือกวันที่)</div>
-        <input type="date" id="date-input" value="${state.customDatePick}">
-        ${state.customDatePick ? `<button class="btn" style="border:none;background:var(--accent);color:#fff;padding:7px 16px;margin-left:8px;display:inline-flex;" id="confirm-date-btn">Confirm (ยืนยัน)</button>` : ""}
+        <div style="font-size:12px;color:var(--text-muted);margin:8px 0 6px;">Or pick a date (หรือเลือกวันที่)</div>
+        <input type="date" id="date-input" value="${state.customDatePick}" style="border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:13px;background:#FDFCFA;">
+        ${state.customDatePick ? `<button class="btn" style="border:none;background:var(--accent);color:#fff;padding:6px 14px;margin-left:6px;" id="confirm-date-btn">Confirm</button>` : ""}
       `;
     }
 
     block = `
       <div class="q-text" style="margin-bottom:6px;">When & how long? <span class="th">(เมื่อไหร่ และใช้เวลานานแค่ไหน?)</span></div>
-      <div class="section-label">Due (กำหนดวัน)</div>
+      <div style="font-size:12.5px;color:var(--text-secondary);margin:12px 0 6px;text-align:left;">Due (กำหนดวัน)</div>
       <div class="chip-row">${dChips}</div>
       ${dateArea}
-      <div class="section-label">Effort (ใช้เวลา)</div>
+      <div style="font-size:12.5px;color:var(--text-secondary);margin:14px 0 6px;text-align:left;">Effort (ใช้เวลา)</div>
       <div class="chip-row" style="flex-direction:column;">${eChips}</div>
       <button class="btn btn-primary" id="continue-btn" style="margin-top:16px;">Continue (ต่อไป) →</button>
       <div class="link-btn" id="skip-schedule-btn" style="margin-top:10px;">Skip for now (ข้ามไปก่อน)</div>
@@ -532,7 +616,10 @@ function renderSorting() {
         <div class="breathe"></div>
         <div class="q-card">
           <div class="q-progress">Task ${state.index + 1} of ${state.tasks.length} (งานที่ ${state.index + 1} จาก ${state.tasks.length})</div>
-          <div class="q-task">${escapeHtml(task.text)}${(() => { const c = state.tempCategory !== undefined ? state.tempCategory : task.category; return c ? renderCategoryBadge(c) : ""; })()}</div>
+          <div class="q-task">
+            ${escapeHtml(task.text)}
+            <div style="margin-top:8px;"><span style="font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;background:${catObj.bg};color:${catObj.text};">${catObj.icon} ${escapeHtml(catObj.name)}</span></div>
+          </div>
           ${block}
         </div>
       </div>
@@ -542,17 +629,26 @@ function renderSorting() {
 
 function renderResult() {
   const quadrants = ["do", "schedule", "delegate", "delete"];
-  const allCategories = [...new Set(state.results.map(r => r.category).filter(Boolean))];
-  const filtered = state.categoryFilter ? state.results.filter(r => r.category === state.categoryFilter) : state.results;
+  const activeCategories = state.categories.filter(c => state.results.some(r => r.categoryId === c.id));
+  const filtered = state.categoryFilter ? state.results.filter(r => r.categoryId === state.categoryFilter) : state.results;
 
-  const filterRow = allCategories.length > 0 ? `
-    <div class="chip-row" style="margin-bottom:14px;">
-      <div class="chip ${!state.categoryFilter ? "selected" : ""}" data-cat-filter="">All (ทั้งหมด)</div>
-      ${allCategories.map(cat => {
-        const sel = state.categoryFilter === cat;
-        const style = categoryStyle(cat);
-        return `<div class="chip ${sel ? "selected" : ""}" data-cat-filter="${escapeHtml(cat)}" style="${sel ? "" : `background:${style.bg};color:${style.text};border-color:transparent;`}">${escapeHtml(cat)}</div>`;
+  const totalTasks = filtered.length;
+  const completedCount = filtered.filter(r => r.completed).length;
+
+  const filterRow = activeCategories.length > 0 ? `
+    <div class="chip-row" style="margin-bottom:16px;">
+      <div class="cat-chip ${!state.categoryFilter ? "active" : ""}" data-cat-filter="">All Categories</div>
+      ${activeCategories.map(cat => {
+        const sel = state.categoryFilter === cat.id;
+        return `<div class="cat-chip ${sel ? "active" : ""}" data-cat-filter="${cat.id}" style="${sel ? "" : `background:${cat.bg};color:${cat.text};border-color:transparent;`}">${cat.icon} ${escapeHtml(cat.name)}</div>`;
       }).join("")}
+    </div>
+  ` : "";
+
+  const progressBar = totalTasks > 0 ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#EFECE6;padding:10px 16px;border-radius:12px;margin-bottom:16px;font-size:13px;color:var(--text-secondary);">
+      <span>Progress (ความคืบหน้า): <strong>${completedCount}/${totalTasks}</strong> finished</span>
+      <span style="font-weight:600;color:var(--accent-deep);">${Math.round((completedCount/totalTasks)*100)}%</span>
     </div>
   ` : "";
 
@@ -567,18 +663,22 @@ function renderResult() {
     const itemsHtml = items.length === 0
       ? `<div class="qcard-empty">No tasks (ไม่มีงาน)</div>`
       : items.map(item => {
-        const catStyle = item.category ? categoryStyle(item.category) : null;
+        const catStyle = categoryStyle(item.categoryId);
+        const isDone = !!item.completed;
         return `
-        <div class="item">
+        <div class="item ${isDone ? "completed" : ""}">
           <div class="item-top">
-            <span>${escapeHtml(item.text)}</span>
+            <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
+              <input type="checkbox" class="task-checkbox" data-toggle-complete="${item.id}" ${isDone ? "checked" : ""}>
+              <span style="font-weight:500;${isDone ? "text-decoration:line-through;" : ""}">${escapeHtml(item.text)}</span>
+            </div>
             ${item.deadline ? `<span class="badge" style="background:${meta.fill};color:${meta.text}">${escapeHtml(item.deadline.label.split(" (")[0])}</span>` : ""}
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;padding-left:26px;">
             ${item.effort ? `<div class="item-effort">${item.effort.icon} ${escapeHtml(item.effort.label.split(" (")[0])}</div>` : ""}
-            ${item.category ? `<div style="font-size:10px;font-weight:500;padding:1px 8px;border-radius:999px;background:${catStyle.bg};color:${catStyle.text};">${escapeHtml(item.category)}</div>` : ""}
+            <div style="font-size:10px;font-weight:500;padding:1px 8px;border-radius:999px;background:${catStyle.bg};color:${catStyle.text};">${item.categoryIcon} ${escapeHtml(item.categoryName)}</div>
           </div>
-          ${item.timeDrain ? `<div class="item-drain">Time-consuming — only you can do this (งานกินเวลา — ต้องเป็นคุณทำเอง)</div>` : ""}
+          ${item.timeDrain ? `<div class="item-drain" style="padding-left:26px;">Time-consuming — only you can do this (งานกินเวลา — ต้องเป็นคุณทำเอง)</div>` : ""}
         </div>
       `;
       }).join("");
@@ -594,7 +694,8 @@ function renderResult() {
   return `
     <div class="fade-in">
       ${filterRow}
-      <div id="result-capture" style="background:#FAF8F4;padding:4px;">
+      ${progressBar}
+      <div id="result-capture" style="background:#FAF8F4;padding:8px;border-radius:12px;">
         <div class="grid">${cards}</div>
         <div class="footer-note">
           This framework is based on <a href="https://asana.com/resources/eisenhower-matrix" target="_blank" rel="noreferrer">The Eisenhower Matrix</a> (อ้างอิงจาก Eisenhower Matrix)
@@ -615,23 +716,55 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
-function renderCategoryBadge(cat) {
-  const style = categoryStyle(cat);
-  return `<div style="display:inline-block;margin-top:8px;font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;background:${style.bg};color:${style.text};">${escapeHtml(cat)}</div>`;
-}
-
 function attachEvents() {
   const startBtn = document.getElementById("start-btn");
-  if (startBtn) startBtn.addEventListener("click", startSorting);
+  if (startBtn) startBtn.addEventListener("click", startCategorizing);
 
+  const addCatBtn = document.getElementById("add-cat-btn");
+  if (addCatBtn) addCatBtn.addEventListener("click", addNewCategoryPrompt);
+
+  const startSortBtn = document.getElementById("start-sort-btn");
+  if (startSortBtn) startSortBtn.addEventListener("click", startPrioritySorting);
+
+  // Drag and Drop Listeners
+  document.querySelectorAll(".task-draggable").forEach(el => {
+    el.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", el.getAttribute("data-task-id"));
+    });
+    el.addEventListener("click", () => {
+      const taskId = el.getAttribute("data-task-id");
+      setState({ selectedTaskIdMobile: state.selectedTaskIdMobile === taskId ? null : taskId });
+    });
+  });
+
+  document.querySelectorAll(".cat-col").forEach(col => {
+    col.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      col.classList.add("drag-over");
+    });
+    col.addEventListener("dragleave", () => col.classList.remove("drag-over"));
+    col.addEventListener("drop", (e) => {
+      e.preventDefault();
+      col.classList.remove("drag-over");
+      const taskId = e.dataTransfer.getData("text/plain");
+      const catId = col.getAttribute("data-cat-id");
+      if (taskId && catId) assignTaskCategory(taskId, catId);
+    });
+  });
+
+  document.querySelectorAll("[data-assign-mobile]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const catId = btn.getAttribute("data-assign-mobile");
+      if (state.selectedTaskIdMobile && catId) assignTaskCategory(state.selectedTaskIdMobile, catId);
+    });
+  });
+
+  // Sorting handlers
   document.querySelectorAll("[data-quad]").forEach(el => {
     el.addEventListener("click", () => tapQuadrant(el.getAttribute("data-quad")));
   });
   const guidedBtn = document.getElementById("guided-btn");
   if (guidedBtn) guidedBtn.addEventListener("click", startGuided);
-
-  const categorySelect = document.getElementById("category-select");
-  if (categorySelect) categorySelect.addEventListener("change", (e) => setState({ tempCategory: e.target.value || null }));
 
   const yesBtn = document.getElementById("yes-btn");
   const noBtn = document.getElementById("no-btn");
@@ -654,10 +787,30 @@ function attachEvents() {
     });
   });
 
+  document.querySelectorAll("[data-effort]").forEach(el => {
+    el.addEventListener("click", () => {
+      const key = el.getAttribute("data-effort");
+      const effort = EFFORT_PRESETS.find(ef => ef.key === key);
+      selectEffort(effort);
+    });
+  });
+
+  const continueBtn = document.getElementById("continue-btn");
+  if (continueBtn) continueBtn.addEventListener("click", continueFromSchedule);
+  const skipBtn = document.getElementById("skip-schedule-btn");
+  if (skipBtn) skipBtn.addEventListener("click", skipScheduling);
+
   document.querySelectorAll("[data-cat-filter]").forEach(el => {
     el.addEventListener("click", () => {
-      const cat = el.getAttribute("data-cat-filter");
-      setState({ categoryFilter: cat || null });
+      const catId = el.getAttribute("data-cat-filter");
+      setState({ categoryFilter: catId || null });
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-complete]").forEach(cb => {
+    cb.addEventListener("change", (e) => {
+      const taskId = cb.getAttribute("data-toggle-complete");
+      toggleTaskComplete(taskId);
     });
   });
 
@@ -668,25 +821,13 @@ function attachEvents() {
   const clearDateBtn = document.getElementById("clear-date-btn");
   if (clearDateBtn) clearDateBtn.addEventListener("click", () => setState({ chosenDeadline: undefined, customDatePick: "" }));
 
-  document.querySelectorAll("[data-effort]").forEach(el => {
-    el.addEventListener("click", () => {
-      const key = el.getAttribute("data-effort");
-      const effort = EFFORT_PRESETS.find(e => e.key === key);
-      selectEffort(effort);
-    });
-  });
-
-  const continueBtn = document.getElementById("continue-btn");
-  if (continueBtn) continueBtn.addEventListener("click", continueFromSchedule);
-  const skipBtn = document.getElementById("skip-schedule-btn");
-  if (skipBtn) skipBtn.addEventListener("click", skipScheduling);
-
   const saveBtn = document.getElementById("save-btn");
   if (saveBtn) saveBtn.addEventListener("click", handleSaveImage);
   const resetBtn = document.getElementById("reset-btn");
   if (resetBtn) resetBtn.addEventListener("click", resetApp);
 }
 
+// Initial Render
 render();
 </script>
 </body>
