@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Priority (จัดลำดับให้เบาใจ)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg: #FAF8F4; --card: #FFFFFF; --border: #E8E3D9;
+    --text-primary: #33322D; --text-secondary: #8A8578; --text-muted: #B5AFA0;
+    --accent: #7C9885; --accent-deep: #4A5F4E;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); font-family: 'Google Sans', sans-serif; color: var(--text-primary); }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 48px 20px 64px; }
+  .header { text-align: center; margin-bottom: 40px; }
+  .header h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--accent-deep); margin: 0; }
+  .header h1 span { font-weight: 400; }
+  .header p { font-size: 13.5px; color: var(--text-secondary); margin-top: 6px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .helper { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+  textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+    font-size: 15px; color: var(--text-primary); background: #FDFCFA; resize: vertical;
+    outline: none; font-family: inherit;
+  }
+  .btn {
+    border: none; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 14px 20px; margin-top: 16px; }
+  .btn-outline { background: var(--card); color: var(--text-secondary); border: 1px solid var(--border); flex: 1; padding: 13px 16px; }
+  .btn-fill { background: var(--accent); color: #fff; flex: 1; padding: 13px 16px; }
+  .btn-fill:disabled { opacity: 0.6; cursor: default; }
+
+  .dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 28px; }
+  .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--border); }
+  .dot.done { background: var(--accent); }
+  .dot.current { background: var(--accent-deep); }
+
+  .q-wrap { position: relative; display: flex; justify-content: center; margin-bottom: 20px; }
+  .breathe {
+    position: absolute; width: 180px; height: 180px; border-radius: 50%;
+    background: var(--accent); opacity: 0.12; top: -20px; animation: breathe 4s ease-in-out infinite;
+  }
+  @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.55; } 50% { transform: scale(1.06); opacity: 0.85; } }
+  @media (prefers-reduced-motion: reduce) { .breathe, .fade-in { animation: none; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.35s ease both; }
+
+  .q-card { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; width: 100%; text-align: center; }
+  .q-progress { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+  .q-task { font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 20px; line-height: 1.5; }
+  .q-text { font-size: 15px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.6; }
+  .q-text .th { font-size: 13px; opacity: 0.85; }
+  .section-label { font-size: 13px; color: var(--text-secondary); margin: 16px 0 8px; }
+
+  .yn-row { display: flex; gap: 12px; justify-content: center; }
+  .yn-btn { flex: 1; max-width: 140px; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: transform 0.15s ease; }
+  .yn-btn:hover { transform: translateY(-2px); }
+  .yn-no { border: 1px solid var(--border); background: #FDFCFA; color: var(--text-secondary); }
+  .yn-yes { border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+
+  .quad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .quad-btn {
+    border-radius: 14px; padding: 16px 10px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+    border: 1.5px solid transparent; transition: transform 0.15s ease;
+  }
+  .quad-btn:hover { transform: translateY(-2px); }
+  .quad-sub { font-size: 10.5px; font-weight: 400; opacity: 0.8; margin-top: 2px; }
+  .link-btn { font-size: 13px; color: var(--accent-deep); text-decoration: underline; cursor: pointer; display: inline-block; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 6px; }
+  .chip {
+    padding: 9px 15px; border-radius: 999px; border: 1px solid var(--border); background: #FDFCFA;
+    font-size: 12.5px; color: var(--text-secondary); cursor: pointer; transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .chip:hover { transform: translateY(-1px); }
+  .chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip-block {
+    padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: #FDFCFA;
+    font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center;
+    gap: 8px; justify-content: center; transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .chip-block:hover { transform: translateY(-1px); }
+  .chip-block.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .small-muted { font-size: 11.5px; color: var(--text-muted); margin: 8px 0 6px; }
+  input[type="date"] { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--text-primary); background: #FDFCFA; font-family: inherit; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .qcard { border-radius: 16px; padding: 16px; min-height: 140px; border: 1px solid; }
+  .qcard-title { font-size: 15px; font-weight: 600; }
+  .qcard-sub { font-size: 11px; opacity: 0.7; margin-bottom: 10px; }
+  .qcard-empty { font-size: 12.5px; opacity: 0.5; }
+  .item { background: rgba(255,255,255,0.6); border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 6px; line-height: 1.4; }
+  .item-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .badge { font-size: 10px; white-space: nowrap; border-radius: 999px; padding: 2px 8px; opacity: 0.9; }
+  .item-effort { font-size: 10.5px; opacity: 0.7; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+  .item-drain { font-size: 10.5px; opacity: 0.75; margin-top: 4px; }
+
+  .footer-note { margin-top: 16px; text-align: center; font-size: 11.5px; color: var(--text-muted); }
+  .footer-note a { color: var(--accent-deep); }
+  .actions { display: flex; gap: 10px; margin-top: 20px; }
+  .tip { margin-top: 16px; text-align: center; font-size: 12.5px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #33322D; color: #fff;
+    padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+    max-width: 90%; text-align: center; z-index: 999;
+  }
+  #toast.show { opacity: 1; }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(51,50,45,0.55); z-index: 1000;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-box {
+    background: var(--card); border-radius: 18px; padding: 20px; max-width: 480px; width: 100%;
+    max-height: 90vh; overflow-y: auto; text-align: center;
+  }
+  .modal-box img { width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 14px; }
+  .modal-hint { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-download {
+    flex: 1; background: var(--accent); color: #fff; text-decoration: none; padding: 12px 16px;
+    border-radius: 12px; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .modal-close {
+    flex: 1; background: var(--card); color: var(--text-secondary); border: 1px solid var(--border);
+    padding: 12px 16px; border-radius: 12px; font-size: 14px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Task Priority <span>(จัดลำดับให้เบาใจ)</span></h1>
+    <p>Empty your head first, then sort one at a time (เทให้หมดหัว แล้วค่อยจัดทีละงาน)</p>
+  </div>
+  <div id="app"></div>
+</div>
+<div id="toast"></div>
+<div id="save-modal-root"></div>
+
+<script>
+const QUADRANT_META = {
+  do: { label: "Do now", th: "ทำเลย", sub: "Important + Urgent (สำคัญ + เร่งด่วน)", fill: "#AEC3A9", soft: "#EDF2EA", text: "#3C5340" },
+  schedule: { label: "Schedule", th: "วางแผน", sub: "Important + Not urgent (สำคัญ + ไม่เร่งด่วน)", fill: "#A9C0D6", soft: "#EBF1F6", text: "#33526E" },
+  delegate: { label: "Delegate", th: "มอบหมาย", sub: "Not important + Urgent (ไม่สำคัญ + เร่งด่วน)", fill: "#E3CBA1", soft: "#FBF4E8", text: "#6E5228" },
+  delete: { label: "Delete", th: "ตัดทิ้ง", sub: "Not important + Not urgent (ไม่สำคัญ + ไม่เร่งด่วน)", fill: "#D8ACA9", soft: "#F8ECEA", text: "#6E3A37" },
+};
+
+const EFFORT_PRESETS = [
+  { key: "quick", rank: 0, label: "Quick · <15 min (เร็ว)", icon: "⚡" },
+  { key: "medium", rank: 1, label: "Medium · 15–60 min (ปานกลาง)", icon: "🕐" },
+  { key: "long", rank: 2, label: "Long · 1hr+ (นาน)", icon: "🕐" },
+];
+
+const CATEGORY_PALETTE = [
+  { bg: "#E4E1F5", text: "#4B4382" },
+  { bg: "#D9EDE3", text: "#2E6B4F" },
+  { bg: "#F5E3D0", text: "#8A5A26" },
+  { bg: "#F0DCE3", text: "#8C3F58" },
+  { bg: "#D8E7F0", text: "#2E5F7A" },
+  { bg: "#EDE7D0", text: "#6B5F26" },
+];
+
+function categoryStyle(cat) {
+  if (!cat) return null;
+  let hash = 0;
+  for (let i = 0; i < cat.length; i++) hash = (hash * 31 + cat.charCodeAt(i)) >>> 0;
+  return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+}
+
+function parseTaskLine(raw, id) {
+  const match = raw.match(/#(\S+)/);
+  const category = match ? match[1].trim() : null;
+  const text = raw.replace(/#\S+/g, "").replace(/\s+/g, " ").trim();
+  return { id, text: text || raw.trim(), category };
+}
+
+const CATEGORY_OPTIONS = [
+  { value: "", label: "No category (ไม่ระบุ)" },
+  { value: "Work", label: "💼 Work (งานประจำ)" },
+  { value: "Side hustle", label: "🌱 Side hustle (งานเสริม)" },
+  { value: "Health", label: "🏃 Health (สุขภาพ)" },
+  { value: "Personal", label: "🏡 Personal (ส่วนตัว)" },
+];
+
+function categoryDisplayLabel(val) {
+  const found = CATEGORY_OPTIONS.find(o => o.value === val);
+  return found ? found.label.split(" (")[0] : val;
+}
+
+function fmtEN(d) { return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+function fmtTH(d) { return d.toLocaleDateString("th-TH", { day: "numeric", month: "short" }); }
+
+function classify(important, urgent, soloSkill) {
+  if (important && urgent) return { quadrant: "do", timeDrain: false };
+  if (important && !urgent) return { quadrant: "schedule", timeDrain: false };
+  if (!important && urgent) {
+    return soloSkill ? { quadrant: "do", timeDrain: true } : { quadrant: "delegate", timeDrain: false };
+  }
+  return { quadrant: "delete", timeDrain: false };
+}
+
+let state = {
+  stage: "dump",
+  tasks: [],
+  index: 0,
+  qStep: 0, // 0 = quick classify, 1-3 = guided, 4 = schedule
+  pending: { important: null, urgent: null },
+  draft: null,
+  chosenDeadline: undefined,
+  tempEffort: undefined,
+  customDatePick: "",
+  results: [],
+  saving: false,
+  categoryFilter: null,
+  tempCategory: undefined,
+};
+
+function setState(patch) { state = { ...state, ...patch }; render(); }
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function startSorting() {
+  const ta = document.getElementById("dump-input");
+  const raw = ta ? ta.value : "";
+  const list = raw.split("\n").map(t => t.trim()).filter(Boolean).map((line, i) => parseTaskLine(line, i));
+  if (list.length === 0) return;
+  setState({
+    tasks: list, results: [], index: 0, qStep: 0,
+    pending: { important: null, urgent: null }, draft: null,
+    chosenDeadline: undefined, tempEffort: undefined, customDatePick: "", tempCategory: undefined, stage: "sorting",
+    categoryFilter: null,
+  });
+}
+
+function advanceOrFinish() {
+  if (state.index + 1 < state.tasks.length) {
+    setState({
+      index: state.index + 1, qStep: 0, pending: { important: null, urgent: null },
+      draft: null, chosenDeadline: undefined, tempEffort: undefined, customDatePick: "", tempCategory: undefined,
+    });
+  } else {
+    setState({ stage: "result" });
+  }
+}
+
+function finalizeAll(info, deadline, effort) {
+  const task = state.tasks[state.index];
+  const category = state.tempCategory !== undefined ? (state.tempCategory || null) : (task.category || null);
+  const newResult = { ...task, quadrant: info.quadrant, timeDrain: info.timeDrain, deadline, effort, category };
+  state.results = [...state.results, newResult];
+  advanceOrFinish();
+}
+
+// --- Quick tap path ---
+function tapQuadrant(key) {
+  if (key === "delete") {
+    finalizeAll({ quadrant: "delete", timeDrain: false }, null, null);
+  } else {
+    setState({ draft: { quadrant: key, timeDrain: false }, qStep: 4, chosenDeadline: undefined, tempEffort: undefined, customDatePick: "" });
+  }
+}
+
+function startGuided() { setState({ qStep: 1 }); }
+
+// --- Guided path ---
+function answerImportant(val) { setState({ pending: { ...state.pending, important: val }, qStep: 2 }); }
+
+function proceedAfterCoreAnswers(p, soloSkill) {
+  const info = classify(p.important, p.urgent, soloSkill);
+  if (info.quadrant === "delete") {
+    finalizeAll(info, null, null);
+  } else {
+    setState({ draft: info, qStep: 4, chosenDeadline: undefined, tempEffort: undefined, customDatePick: "" });
+  }
+}
+
+function answerUrgent(val) {
+  const updated = { ...state.pending, urgent: val };
+  if (state.pending.important === false && val === true) {
+    setState({ pending: updated, qStep: 3 });
+  } else {
+    state.pending = updated;
+    proceedAfterCoreAnswers(updated, null);
+  }
+}
+
+function answerSoloSkill(val) { proceedAfterCoreAnswers(state.pending, val); }
+
+// --- Schedule (deadline + effort combined) ---
+function selectDeadlinePreset(preset) {
+  setState({ chosenDeadline: preset.key === "none" ? null : preset, customDatePick: "" });
+}
+
+function confirmCustomDate() {
+  if (!state.customDatePick) return;
+  const chosen = new Date(state.customDatePick);
+  chosen.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const rank = Math.round((chosen - today) / 86400000);
+  const label = `${fmtEN(chosen)} (${fmtTH(chosen)})`;
+  setState({ chosenDeadline: { key: "custom", label, rank } });
+}
+
+function selectEffort(effort) { setState({ tempEffort: effort }); }
+
+function continueFromSchedule() {
+  finalizeAll(state.draft, state.chosenDeadline === undefined ? null : state.chosenDeadline, state.tempEffort === undefined ? null : state.tempEffort);
+}
+
+function skipScheduling() { finalizeAll(state.draft, null, null); }
+
+function resetApp() {
+  setState({
+    stage: "dump", tasks: [], results: [], index: 0, qStep: 0,
+    pending: { important: null, urgent: null }, draft: null,
+    chosenDeadline: undefined, tempEffort: undefined, customDatePick: "", tempCategory: undefined,
+    categoryFilter: null,
+  });
+}
+
+// --- Save as image ---
+function waitForHtml2Canvas(timeoutMs) {
+  return new Promise((resolve) => {
+    if (window.html2canvas) return resolve(true);
+    const start = Date.now();
+    const iv = setInterval(() => {
+      if (window.html2canvas) { clearInterval(iv); resolve(true); }
+      else if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(false); }
+    }, 150);
+  });
+}
+
+async function handleSaveImage() {
+  setState({ saving: true });
+  const ready = await waitForHtml2Canvas(4000);
+  if (!ready) {
+    setState({ saving: false });
+    showToast("Couldn't load the image tool. Check your internet connection and try again. (โหลดเครื่องมือบันทึกรูปไม่ได้ ลองเช็คอินเทอร์เน็ตแล้วลองใหม่)");
+    return;
+  }
+  const el = document.getElementById("result-capture");
+  if (!el) {
+    setState({ saving: false });
+    showToast("Something went wrong finding the content to save. Please try again. (หาส่วนที่จะเซฟไม่เจอ ลองใหม่อีกครั้ง)");
+    return;
+  }
+  try {
+    const canvas = await window.html2canvas(el, {
+      backgroundColor: "#FAF8F4",
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+    });
+    const dataUrl = canvas.toDataURL("image/png");
+    openSaveModal(dataUrl);
+  } catch (err) {
+    console.error(err);
+    showToast("Couldn't save the image: " + (err && err.message ? err.message : "unknown error") + " (บันทึกรูปไม่สำเร็จ)");
+  } finally {
+    setState({ saving: false });
+  }
+}
+
+function openSaveModal(dataUrl) {
+  const root = document.getElementById("save-modal-root");
+  root.innerHTML = `
+    <div class="modal-backdrop" id="modal-backdrop">
+      <div class="modal-box">
+        <img src="${dataUrl}" alt="Task priority matrix">
+        <div class="modal-hint">
+          Tap "Download" below. On phones, if nothing happens, press and hold the image and choose "Save Image."
+          <br>(กดปุ่ม "ดาวน์โหลด" ด้านล่าง ถ้าเป็นมือถือแล้วไม่มีอะไรเกิดขึ้น ให้กดค้างที่รูปแล้วเลือก "บันทึกรูปภาพ")
+        </div>
+        <div class="modal-actions">
+          <a href="${dataUrl}" download="task-priority-matrix.png" class="modal-download">⬇ Download (ดาวน์โหลด)</a>
+          <button class="modal-close" id="modal-close-btn">Close (ปิด)</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("modal-backdrop").addEventListener("click", (e) => {
+    if (e.target.id === "modal-backdrop") closeSaveModal();
+  });
+  document.getElementById("modal-close-btn").addEventListener("click", closeSaveModal);
+}
+
+function closeSaveModal() {
+  document.getElementById("save-modal-root").innerHTML = "";
+}
+
+function getDeadlinePresets() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 6);
+  return [
+    { key: "today", rank: 0, label: `Today · ${fmtEN(today)} (วันนี้)` },
+    { key: "tomorrow", rank: 1, label: `Tomorrow · ${fmtEN(tomorrow)} (พรุ่งนี้)` },
+    { key: "week", rank: 6, label: `This week · by ${fmtEN(weekEnd)} (สัปดาห์นี้)` },
+    { key: "none", rank: 9999, label: "No date (ไม่ระบุวัน)" },
+  ];
+}
+
+function render() {
+  const app = document.getElementById("app");
+  if (state.stage === "dump") app.innerHTML = renderDump();
+  else if (state.stage === "sorting") app.innerHTML = renderSorting();
+  else app.innerHTML = renderResult();
+  attachEvents();
+}
+
+function renderDump() {
+  return `
+    <div class="fade-in">
+      <div class="card">
+        <div class="helper">Type everything on your mind, one task per line. Don't judge yet. (พิมพ์งานทั้งหมดที่ค้างในหัว บรรทัดละหนึ่งงาน ยังไม่ต้องคิดว่าอันไหนสำคัญ)
+          <br><span style="opacity:0.85">You'll pick a category from a dropdown as you sort — no typing needed (จะเลือกหมวดหมู่จาก dropdown ทีหลังตอนจัดลำดับ ไม่ต้องพิมพ์เพิ่ม)</span>
+        </div>
+        <textarea id="dump-input" rows="8" placeholder="e.g.&#10;Send report to client A&#10;Reply to HR email&#10;Morning run&#10;Sketch new design"></textarea>
+        <button class="btn btn-primary" id="start-btn">Start sorting (เริ่มจัดลำดับ) →</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderSorting() {
+  const task = state.tasks[state.index];
+  if (!task) return "";
+  const dots = state.tasks.map((_, i) => {
+    const cls = i < state.index ? "done" : i === state.index ? "current" : "";
+    return `<div class="dot ${cls}"></div>`;
+  }).join("");
+
+  let block = "";
+
+  if (state.qStep === 0) {
+    const quadBtns = ["do", "schedule", "delegate", "delete"].map(k => {
+      const m = QUADRANT_META[k];
+      return `<div class="quad-btn" data-quad="${k}" style="background:${m.soft};color:${m.text};border-color:${m.fill}">
+                ${m.label} <span style="opacity:0.7">(${m.th})</span>
+                <div class="quad-sub">${m.sub}</div>
+              </div>`;
+    }).join("");
+    block = `
+      <div class="section-label" style="margin-top:0;">Category (หมวดหมู่ - ไม่บังคับ)</div>
+      <select id="category-select" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#FDFCFA;font-size:13.5px;color:var(--text-primary);font-family:inherit;margin-bottom:16px;">
+        ${CATEGORY_OPTIONS.map(o => `<option value="${escapeHtml(o.value)}" ${(state.tempCategory !== undefined ? (state.tempCategory || "") : (task.category || "")) === o.value ? "selected" : ""}>${o.label}</option>`).join("")}
+      </select>
+      <div class="q-text" style="margin-bottom:14px;">Where does this belong? Tap if you already know. <span class="th">(อยู่หมวดไหน? แตะได้เลยถ้ารู้อยู่แล้ว)</span></div>
+      <div class="quad-grid">${quadBtns}</div>
+      <div class="link-btn" id="guided-btn">Not sure? Answer 2 quick questions (ไม่แน่ใจ? ตอบ 2 คำถามช่วยตัดสินใจ)</div>
+    `;
+  } else if (state.qStep === 1) {
+    block = `
+      <div class="q-text">If you never did this, would it hurt your main goals within 1–3 months, or be hard to undo?
+        <br><span class="th">(ถ้าไม่ทำงานนี้เลย ภายใน 1–3 เดือน จะกระทบเป้าหมายหลัก หรือแก้คืนยากมั้ย?)</span></div>
+      <div class="yn-row">
+        <div class="yn-btn yn-no" id="no-btn">✕ No (ไม่ใช่)</div>
+        <div class="yn-btn yn-yes" id="yes-btn">✓ Yes (ใช่)</div>
+      </div>`;
+  } else if (state.qStep === 2) {
+    block = `
+      <div class="q-text">Is there a clear deadline, or would things get worse if not done this week?
+        <br><span class="th">(มี deadline ชัดเจน หรือถ้าไม่ทำสัปดาห์นี้ สถานการณ์จะแย่ลงมั้ย?)</span></div>
+      <div class="yn-row">
+        <div class="yn-btn yn-no" id="no-btn">✕ No (ไม่ใช่)</div>
+        <div class="yn-btn yn-yes" id="yes-btn">✓ Yes (ใช่)</div>
+      </div>`;
+  } else if (state.qStep === 3) {
+    block = `
+      <div class="q-text">Does this need your specific skill or judgment?
+        <br><span class="th">(งานนี้ต้องใช้ฝีมือ หรือการตัดสินใจที่เป็นคุณคนเดียวมั้ย?)</span></div>
+      <div class="yn-row">
+        <div class="yn-btn yn-no" id="no-btn">✕ No (ไม่ใช่)</div>
+        <div class="yn-btn yn-yes" id="yes-btn">✓ Yes (ใช่)</div>
+      </div>`;
+  } else if (state.qStep === 4) {
+    const presets = getDeadlinePresets();
+    const dChips = presets.map(p => {
+      const isSel = state.chosenDeadline ? state.chosenDeadline.key === p.key : (p.key === "none" && state.chosenDeadline === null);
+      return `<div class="chip ${isSel ? "selected" : ""}" data-preset="${p.key}">${p.label}</div>`;
+    }).join("");
+    const eChips = EFFORT_PRESETS.map(ef => {
+      const isSel = state.tempEffort && state.tempEffort.key === ef.key;
+      return `<div class="chip-block ${isSel ? "selected" : ""}" data-effort="${ef.key}">${ef.icon} ${ef.label}</div>`;
+    }).join("");
+
+    let dateArea = "";
+    if (state.chosenDeadline && state.chosenDeadline.key === "custom") {
+      dateArea = `<div class="small-muted">Due: ${state.chosenDeadline.label} — <span class="link-btn" id="clear-date-btn">change</span></div>`;
+    } else {
+      dateArea = `
+        <div class="small-muted">Or pick a date (หรือเลือกวันที่)</div>
+        <input type="date" id="date-input" value="${state.customDatePick}">
+        ${state.customDatePick ? `<button class="btn" style="border:none;background:var(--accent);color:#fff;padding:7px 16px;margin-left:8px;display:inline-flex;" id="confirm-date-btn">Confirm (ยืนยัน)</button>` : ""}
+      `;
+    }
+
+    block = `
+      <div class="q-text" style="margin-bottom:6px;">When & how long? <span class="th">(เมื่อไหร่ และใช้เวลานานแค่ไหน?)</span></div>
+      <div class="section-label">Due (กำหนดวัน)</div>
+      <div class="chip-row">${dChips}</div>
+      ${dateArea}
+      <div class="section-label">Effort (ใช้เวลา)</div>
+      <div class="chip-row" style="flex-direction:column;">${eChips}</div>
+      <button class="btn btn-primary" id="continue-btn" style="margin-top:16px;">Continue (ต่อไป) →</button>
+      <div class="link-btn" id="skip-schedule-btn" style="margin-top:10px;">Skip for now (ข้ามไปก่อน)</div>
+    `;
+  }
+
+  return `
+    <div class="fade-in">
+      <div class="dots">${dots}</div>
+      <div class="q-wrap">
+        <div class="breathe"></div>
+        <div class="q-card">
+          <div class="q-progress">Task ${state.index + 1} of ${state.tasks.length} (งานที่ ${state.index + 1} จาก ${state.tasks.length})</div>
+          <div class="q-task">${escapeHtml(task.text)}${(() => { const c = state.tempCategory !== undefined ? state.tempCategory : task.category; return c ? renderCategoryBadge(c) : ""; })()}</div>
+          ${block}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderResult() {
+  const quadrants = ["do", "schedule", "delegate", "delete"];
+  const allCategories = [...new Set(state.results.map(r => r.category).filter(Boolean))];
+  const filtered = state.categoryFilter ? state.results.filter(r => r.category === state.categoryFilter) : state.results;
+
+  const filterRow = allCategories.length > 0 ? `
+    <div class="chip-row" style="margin-bottom:14px;">
+      <div class="chip ${!state.categoryFilter ? "selected" : ""}" data-cat-filter="">All (ทั้งหมด)</div>
+      ${allCategories.map(cat => {
+        const sel = state.categoryFilter === cat;
+        const style = categoryStyle(cat);
+        return `<div class="chip ${sel ? "selected" : ""}" data-cat-filter="${escapeHtml(cat)}" style="${sel ? "" : `background:${style.bg};color:${style.text};border-color:transparent;`}">${escapeHtml(cat)}</div>`;
+      }).join("")}
+    </div>
+  ` : "";
+
+  const cards = quadrants.map(q => {
+    const meta = QUADRANT_META[q];
+    const items = filtered.filter(r => r.quadrant === q).slice().sort((a, b) => {
+      const rankA = a.deadline?.rank ?? 9999;
+      const rankB = b.deadline?.rank ?? 9999;
+      if (rankA !== rankB) return rankA - rankB;
+      return (a.effort?.rank ?? 1) - (b.effort?.rank ?? 1);
+    });
+    const itemsHtml = items.length === 0
+      ? `<div class="qcard-empty">No tasks (ไม่มีงาน)</div>`
+      : items.map(item => {
+        const catStyle = item.category ? categoryStyle(item.category) : null;
+        return `
+        <div class="item">
+          <div class="item-top">
+            <span>${escapeHtml(item.text)}</span>
+            ${item.deadline ? `<span class="badge" style="background:${meta.fill};color:${meta.text}">${escapeHtml(item.deadline.label.split(" (")[0])}</span>` : ""}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+            ${item.effort ? `<div class="item-effort">${item.effort.icon} ${escapeHtml(item.effort.label.split(" (")[0])}</div>` : ""}
+            ${item.category ? `<div style="font-size:10px;font-weight:500;padding:1px 8px;border-radius:999px;background:${catStyle.bg};color:${catStyle.text};">${escapeHtml(item.category)}</div>` : ""}
+          </div>
+          ${item.timeDrain ? `<div class="item-drain">Time-consuming — only you can do this (งานกินเวลา — ต้องเป็นคุณทำเอง)</div>` : ""}
+        </div>
+      `;
+      }).join("");
+    return `
+      <div class="qcard" style="background:${meta.soft};border-color:${meta.fill};">
+        <div class="qcard-title" style="color:${meta.text}">${meta.label} <span style="font-weight:400;opacity:0.75">(${meta.th})</span></div>
+        <div class="qcard-sub" style="color:${meta.text}">${meta.sub}</div>
+        ${itemsHtml}
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="fade-in">
+      ${filterRow}
+      <div id="result-capture" style="background:#FAF8F4;padding:4px;">
+        <div class="grid">${cards}</div>
+        <div class="footer-note">
+          This framework is based on <a href="https://asana.com/resources/eisenhower-matrix" target="_blank" rel="noreferrer">The Eisenhower Matrix</a> (อ้างอิงจาก Eisenhower Matrix)
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-fill" id="save-btn" ${state.saving ? "disabled" : ""}>⬇ ${state.saving ? "Saving... (กำลังบันทึก)" : "Save as image (เซฟเป็นรูป)"}</button>
+        <button class="btn btn-outline" id="reset-btn">↺ Start over (เริ่มใหม่)</button>
+      </div>
+      <div class="tip">✨ Start with quick wins due soonest (เริ่มจากงานเร็วที่ใกล้วันที่สุดก่อน)</div>
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement("div");
+  d.innerText = str;
+  return d.innerHTML;
+}
+
+function renderCategoryBadge(cat) {
+  const style = categoryStyle(cat);
+  return `<div style="display:inline-block;margin-top:8px;font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;background:${style.bg};color:${style.text};">${escapeHtml(cat)}</div>`;
+}
+
+function attachEvents() {
+  const startBtn = document.getElementById("start-btn");
+  if (startBtn) startBtn.addEventListener("click", startSorting);
+
+  document.querySelectorAll("[data-quad]").forEach(el => {
+    el.addEventListener("click", () => tapQuadrant(el.getAttribute("data-quad")));
+  });
+  const guidedBtn = document.getElementById("guided-btn");
+  if (guidedBtn) guidedBtn.addEventListener("click", startGuided);
+
+  const categorySelect = document.getElementById("category-select");
+  if (categorySelect) categorySelect.addEventListener("change", (e) => setState({ tempCategory: e.target.value || null }));
+
+  const yesBtn = document.getElementById("yes-btn");
+  const noBtn = document.getElementById("no-btn");
+  if (yesBtn) yesBtn.addEventListener("click", () => {
+    if (state.qStep === 1) answerImportant(true);
+    else if (state.qStep === 2) answerUrgent(true);
+    else if (state.qStep === 3) answerSoloSkill(true);
+  });
+  if (noBtn) noBtn.addEventListener("click", () => {
+    if (state.qStep === 1) answerImportant(false);
+    else if (state.qStep === 2) answerUrgent(false);
+    else if (state.qStep === 3) answerSoloSkill(false);
+  });
+
+  document.querySelectorAll("[data-preset]").forEach(el => {
+    el.addEventListener("click", () => {
+      const key = el.getAttribute("data-preset");
+      const preset = getDeadlinePresets().find(p => p.key === key);
+      selectDeadlinePreset(preset);
+    });
+  });
+
+  document.querySelectorAll("[data-cat-filter]").forEach(el => {
+    el.addEventListener("click", () => {
+      const cat = el.getAttribute("data-cat-filter");
+      setState({ categoryFilter: cat || null });
+    });
+  });
+
+  const dateInput = document.getElementById("date-input");
+  if (dateInput) dateInput.addEventListener("change", (e) => setState({ customDatePick: e.target.value }));
+  const confirmDateBtn = document.getElementById("confirm-date-btn");
+  if (confirmDateBtn) confirmDateBtn.addEventListener("click", confirmCustomDate);
+  const clearDateBtn = document.getElementById("clear-date-btn");
+  if (clearDateBtn) clearDateBtn.addEventListener("click", () => setState({ chosenDeadline: undefined, customDatePick: "" }));
+
+  document.querySelectorAll("[data-effort]").forEach(el => {
+    el.addEventListener("click", () => {
+      const key = el.getAttribute("data-effort");
+      const effort = EFFORT_PRESETS.find(e => e.key === key);
+      selectEffort(effort);
+    });
+  });
+
+  const continueBtn = document.getElementById("continue-btn");
+  if (continueBtn) continueBtn.addEventListener("click", continueFromSchedule);
+  const skipBtn = document.getElementById("skip-schedule-btn");
+  if (skipBtn) skipBtn.addEventListener("click", skipScheduling);
+
+  const saveBtn = document.getElementById("save-btn");
+  if (saveBtn) saveBtn.addEventListener("click", handleSaveImage);
+  const resetBtn = document.getElementById("reset-btn");
+  if (resetBtn) resetBtn.addEventListener("click", resetApp);
+}
+
+render();
+</script>
+</body>
+</html>
