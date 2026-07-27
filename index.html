@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Task Priority Matrix (จัดลำดับให้เบาใจ)</title>
+<title>Task Priority (จัดลำดับให้เบาใจ)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -71,7 +71,7 @@
   .cat-col-header { font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
   .cat-col-count { font-size: 11px; font-weight: 500; background: var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 999px; }
   .cat-col-tasks { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-  
+
   .task-draggable {
     background: #FFFFFF; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
     font-size: 13px; font-weight: 500; cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
@@ -111,13 +111,20 @@
 
   /* Output Cards and Checkboxes */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 420px) {
+    .qcard { padding: 10px; min-height: 110px; }
+    .qcard-title { font-size: 12.5px; }
+    .qcard-sub { font-size: 9.5px; }
+    .item { font-size: 11px; padding: 7px 8px; }
+    .grid { gap: 8px; }
+  }
   .qcard { border-radius: 16px; padding: 16px; min-height: 140px; border: 1px solid; }
   .qcard-title { font-size: 15px; font-weight: 600; }
   .qcard-sub { font-size: 11px; opacity: 0.7; margin-bottom: 10px; }
   .qcard-empty { font-size: 12.5px; opacity: 0.5; text-align: center; padding: 20px 0; }
-  
-  .item { background: rgba(255,255,255,0.85); border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 8px; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s ease; }
+
+  .item { background: rgba(255,255,255,0.85); border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 8px; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s ease; cursor: pointer; }
+  .item:hover { box-shadow: 0 3px 8px rgba(0,0,0,0.08); transform: translateY(-1px); }
   .item.completed { opacity: 0.55; background: rgba(245,245,245,0.7); }
   .task-checkbox { width: 18px; height: 18px; accent-color: var(--accent-deep); cursor: pointer; margin-top: 1px; flex-shrink: 0; }
   .item-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
@@ -126,10 +133,9 @@
   .item-drain { font-size: 10.5px; opacity: 0.8; margin-top: 4px; color: #8C3F58; font-weight: 500; }
 
   .footer-note { margin-top: 16px; text-align: center; font-size: 11.5px; color: var(--text-muted); }
-  .footer-note a { color: var(--accent-deep); }
   .actions { display: flex; gap: 10px; margin-top: 20px; }
   .tip { margin-top: 16px; text-align: center; font-size: 12.5px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px; }
-  
+
   #toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #33322D; color: #fff;
     padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
@@ -256,6 +262,7 @@ let state = {
   categoryFilter: null,
   selectedTaskIdMobile: null, // For mobile tap-to-assign
   showAddTaskModal: false, // Control for quick add modal on result screen
+  editingTaskId: null, // Control for edit-task modal on result screen
 };
 
 function setState(patch) {
@@ -314,7 +321,7 @@ function addNewCategoryPrompt() {
   const name = prompt("Enter category name (ระบุชื่อหมวดหมู่ใหม่):");
   if (!name || !name.trim()) return;
   const icon = prompt("Enter an emoji icon (ใส่อิโมจิสัญลักษณ์ เช่น 📚, 🛒):") || "🏷️";
-  
+
   const colors = [
     { bg: "#EAF2E8", text: "#386641" },
     { bg: "#F3E8EE", text: "#722F37" },
@@ -359,12 +366,12 @@ function advanceOrFinish() {
 function finalizeAll(info, deadline, effort) {
   const task = state.tasks[state.index];
   const catObj = getCategoryObj(task.categoryId);
-  const newResult = { 
-    ...task, 
-    quadrant: info.quadrant, 
-    timeDrain: info.timeDrain, 
-    deadline, 
-    effort, 
+  const newResult = {
+    ...task,
+    quadrant: info.quadrant,
+    timeDrain: info.timeDrain,
+    deadline,
+    effort,
     categoryName: catObj.name,
     categoryIcon: catObj.icon,
     categoryId: catObj.id,
@@ -377,6 +384,47 @@ function finalizeAll(info, deadline, effort) {
 function toggleTaskComplete(taskId) {
   const updated = state.results.map(r => r.id === taskId ? { ...r, completed: !r.completed } : r);
   setState({ results: updated });
+}
+
+function openEditModal(taskId) {
+  setState({ editingTaskId: taskId });
+}
+
+function closeEditModal() {
+  setState({ editingTaskId: null });
+}
+
+function deleteTask(taskId) {
+  const updated = state.results.filter(r => r.id !== taskId);
+  setState({ results: updated, editingTaskId: null });
+  showToast("Task removed (ลบงานนี้แล้ว)");
+}
+
+function saveEditedTask(taskId, changes) {
+  const updated = state.results.map(r => {
+    if (r.id !== taskId) return r;
+    const catObj = getCategoryObj(changes.categoryId);
+    let deadlineObj = null;
+    if (changes.deadlineKey && changes.deadlineKey !== "none") {
+      deadlineObj = getDeadlinePresets().find(p => p.key === changes.deadlineKey) || null;
+    }
+    let effortObj = null;
+    if (changes.effortKey && changes.effortKey !== "none") {
+      effortObj = EFFORT_PRESETS.find(ef => ef.key === changes.effortKey) || null;
+    }
+    return {
+      ...r,
+      text: changes.text,
+      categoryId: catObj.id,
+      categoryName: catObj.name,
+      categoryIcon: catObj.icon,
+      quadrant: changes.quadrant,
+      deadline: deadlineObj,
+      effort: effortObj,
+    };
+  });
+  setState({ results: updated, editingTaskId: null });
+  showToast("Task updated (แก้ไขงานเรียบร้อยแล้ว)");
 }
 
 function tapQuadrant(key) {
@@ -440,53 +488,76 @@ function resetApp() {
     categories: [...DEFAULT_CATEGORIES],
     pending: { important: null, urgent: null }, draft: null,
     chosenDeadline: undefined, tempEffort: undefined, customDatePick: "",
-    categoryFilter: null, selectedTaskIdMobile: null, showAddTaskModal: false,
+    categoryFilter: null, selectedTaskIdMobile: null, showAddTaskModal: false, editingTaskId: null,
   });
 }
 
-function handleSaveImage() {
-  const target = document.getElementById("result-capture");
-  if (!target) return;
+function waitForHtml2Canvas(timeoutMs) {
+  return new Promise((resolve) => {
+    if (window.html2canvas) return resolve(true);
+    const start = Date.now();
+    const iv = setInterval(() => {
+      if (window.html2canvas) { clearInterval(iv); resolve(true); }
+      else if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(false); }
+    }, 150);
+  });
+}
+
+async function handleSaveImage() {
+  // IMPORTANT: update the "saving" state FIRST (this re-renders #app), THEN grab the element.
+  // Grabbing the element before this re-render would give a stale/detached node.
   setState({ saving: true });
 
-  html2canvas(target, { scale: 2, useCORS: true, backgroundColor: "#FAF8F4" })
-    .then(canvas => {
-      const imgData = canvas.toDataURL("image/png");
-      const modalRoot = document.getElementById("save-modal-root");
-      if (modalRoot) {
-        modalRoot.innerHTML = `
-          <div class="modal-backdrop" id="img-modal-backdrop">
-            <div class="modal-box">
-              <h3 style="margin-top:0;margin-bottom:12px;color:var(--accent-deep);">Matrix Image Saved! (บันทึกรูปภาพเรียบร้อย)</h3>
-              <img src="${imgData}" alt="Task Matrix Preview" />
-              <div class="modal-hint">Click download or long-press/right-click image to save to device. (กด Download หรือกดค้างที่รูปเพื่อบันทึกได้เลย)</div>
-              <div class="modal-actions">
-                <a href="${imgData}" download="task-priority-matrix.png" class="modal-download">⬇ Download Image</a>
-                <button class="modal-close" id="close-save-modal">Close</button>
-              </div>
+  const ready = await waitForHtml2Canvas(4000);
+  if (!ready) {
+    setState({ saving: false });
+    showToast("Couldn't load the image tool. Check your internet connection and try again. (โหลดเครื่องมือบันทึกรูปไม่ได้ ลองเช็คอินเทอร์เน็ตแล้วลองใหม่)");
+    return;
+  }
+
+  const target = document.getElementById("result-capture");
+  if (!target) {
+    setState({ saving: false });
+    showToast("Something went wrong finding the content to save. Please try again. (หาส่วนที่จะเซฟไม่เจอ ลองใหม่อีกครั้ง)");
+    return;
+  }
+
+  try {
+    const canvas = await html2canvas(target, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#FAF8F4", logging: false });
+    const imgData = canvas.toDataURL("image/png");
+    const modalRoot = document.getElementById("save-modal-root");
+    if (modalRoot) {
+      modalRoot.innerHTML = `
+        <div class="modal-backdrop" id="img-modal-backdrop">
+          <div class="modal-box">
+            <h3 style="margin-top:0;margin-bottom:12px;color:var(--accent-deep);">Image Ready (รูปพร้อมแล้ว)</h3>
+            <img src="${imgData}" alt="Task Matrix Preview" />
+            <div class="modal-hint">
+              Tap "Download" below. On phones, if nothing happens, press and hold the image and choose "Save Image."
+              <br>(กดปุ่ม "ดาวน์โหลด" ด้านล่าง ถ้าเป็นมือถือแล้วไม่มีอะไรเกิดขึ้น ให้กดค้างที่รูปแล้วเลือก "บันทึกรูปภาพ")
+            </div>
+            <div class="modal-actions">
+              <a href="${imgData}" download="task-priority-matrix.png" class="modal-download">⬇ Download (ดาวน์โหลด)</a>
+              <button class="modal-close" id="close-save-modal">Close (ปิด)</button>
             </div>
           </div>
-        `;
-        document.getElementById("close-save-modal")?.addEventListener("click", () => {
-          modalRoot.innerHTML = "";
-        });
-        document.getElementById("img-modal-backdrop")?.addEventListener("click", (e) => {
-          if (e.target.id === "img-modal-backdrop") modalRoot.innerHTML = "";
-        });
-      }
-      showToast("Image generated! (สร้างรูปภาพเรียบร้อย)");
-    })
-    .catch(err => {
-      console.error(err);
-      showToast("Failed to capture image (เกิดข้อผิดพลาดในการสร้างรูป)");
-    })
-    .finally(() => {
-      setState({ saving: false });
-    });
+        </div>
+      `;
+      document.getElementById("close-save-modal")?.addEventListener("click", () => { modalRoot.innerHTML = ""; });
+      document.getElementById("img-modal-backdrop")?.addEventListener("click", (e) => {
+        if (e.target.id === "img-modal-backdrop") modalRoot.innerHTML = "";
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Couldn't save the image: " + (err && err.message ? err.message : "unknown error") + " (บันทึกรูปไม่สำเร็จ)");
+  } finally {
+    setState({ saving: false });
+  }
 }
 
 function renderDump() {
-  const catBadges = state.categories.map(c => 
+  const catBadges = state.categories.map(c =>
     `<span style="font-size:12px;padding:4px 10px;border-radius:999px;background:${c.bg};color:${c.text};font-weight:500;display:inline-flex;align-items:center;gap:4px;">
       ${c.icon} ${escapeHtml(c.name)}
     </span>`
@@ -694,10 +765,10 @@ function renderResult() {
         const catStyle = categoryStyle(item.categoryId);
         const isDone = !!item.completed;
         return `
-        <div class="item ${isDone ? "completed" : ""}">
+        <div class="item ${isDone ? "completed" : ""}" data-edit-task="${item.id}">
           <div class="item-top">
             <div style="display:flex;align-items:flex-start;gap:8px;flex:1;">
-              <input type="checkbox" class="task-checkbox" data-toggle-complete="${item.id}" ${isDone ? "checked" : ""}>
+              <input type="checkbox" class="task-checkbox" data-toggle-complete="${item.id}" data-stop-propagation="1" ${isDone ? "checked" : ""}>
               <span style="font-weight:500;${isDone ? "text-decoration:line-through;" : ""}">${escapeHtml(item.text)}</span>
             </div>
             ${item.deadline ? `<span class="badge" style="background:${meta.fill};color:${meta.text}">${escapeHtml(item.deadline.label.split(" (")[0])}</span>` : ""}
@@ -723,7 +794,7 @@ function renderResult() {
     <div class="modal-backdrop" id="add-modal-backdrop">
       <div class="modal-box" style="text-align:left;">
         <h3 style="margin-top:0;margin-bottom:16px;color:var(--accent-deep);font-size:18px;">➕ Add New Task (เพิ่มงานใหม่)</h3>
-        
+
         <div class="form-group">
           <label class="form-label">Task Name (ชื่องาน)</label>
           <input type="text" id="new-task-text" class="form-input" placeholder="e.g. Call client for feedback">
@@ -764,23 +835,79 @@ function renderResult() {
     </div>
   ` : "";
 
+  const editingTask = state.editingTaskId ? state.results.find(r => r.id === state.editingTaskId) : null;
+  const editTaskModal = editingTask ? `
+    <div class="modal-backdrop" id="edit-modal-backdrop">
+      <div class="modal-box" style="text-align:left;">
+        <h3 style="margin-top:0;margin-bottom:16px;color:var(--accent-deep);font-size:18px;">✏️ Edit Task (แก้ไขงาน)</h3>
+
+        <div class="form-group">
+          <label class="form-label">Task Name (ชื่องาน)</label>
+          <input type="text" id="edit-task-text" class="form-input" value="${escapeHtml(editingTask.text)}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category (หมวดหมู่)</label>
+          <select id="edit-task-cat" class="form-select">
+            ${state.categories.map(c => `<option value="${c.id}" ${c.id === editingTask.categoryId ? "selected" : ""}>${c.icon} ${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Priority Quadrant (ระดับความสำคัญ)</label>
+          <select id="edit-task-quad" class="form-select">
+            <option value="do" ${editingTask.quadrant === "do" ? "selected" : ""}>Do now (ทำเลย - สำคัญ + เร่งด่วน)</option>
+            <option value="schedule" ${editingTask.quadrant === "schedule" ? "selected" : ""}>Schedule (วางแผน - สำคัญ + ไม่เร่งด่วน)</option>
+            <option value="delegate" ${editingTask.quadrant === "delegate" ? "selected" : ""}>Delegate (มอบหมาย - ไม่สำคัญ + เร่งด่วน)</option>
+            <option value="delete" ${editingTask.quadrant === "delete" ? "selected" : ""}>Delete (ตัดทิ้ง - ไม่สำคัญ + ไม่เร่งด่วน)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Deadline (กำหนดส่ง)</label>
+          <select id="edit-task-deadline" class="form-select">
+            <option value="none" ${!editingTask.deadline ? "selected" : ""}>No Date (ไม่ระบุวัน)</option>
+            <option value="today" ${editingTask.deadline?.key === "today" ? "selected" : ""}>Today (วันนี้)</option>
+            <option value="tomorrow" ${editingTask.deadline?.key === "tomorrow" ? "selected" : ""}>Tomorrow (พรุ่งนี้)</option>
+            <option value="week" ${editingTask.deadline?.key === "week" ? "selected" : ""}>This week (สัปดาห์นี้)</option>
+          </select>
+          ${editingTask.deadline?.key === "custom" ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">Currently: ${escapeHtml(editingTask.deadline.label)} — pick an option above to change (ปัจจุบัน: ${escapeHtml(editingTask.deadline.label)} — เลือกด้านบนเพื่อเปลี่ยน)</div>` : ""}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Effort (ใช้เวลา)</label>
+          <select id="edit-task-effort" class="form-select">
+            <option value="none" ${!editingTask.effort ? "selected" : ""}>Not set (ไม่ระบุ)</option>
+            ${EFFORT_PRESETS.map(ef => `<option value="${ef.key}" ${editingTask.effort?.key === ef.key ? "selected" : ""}>${ef.icon} ${ef.label}</option>`).join("")}
+          </select>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-fill" id="confirm-edit-task-btn" style="flex:1;">Save changes (บันทึกการแก้ไข)</button>
+          <button class="btn btn-outline" id="close-edit-modal-btn" style="flex:1;">Cancel (ยกเลิก)</button>
+        </div>
+        <button class="btn btn-outline" id="delete-edit-task-btn" style="width:100%;margin-top:10px;color:#8C3F58;border-color:#E8C4C4;">🗑 Delete task (ลบงานนี้)</button>
+      </div>
+    </div>
+  ` : "";
+
   return `
     <div class="fade-in">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-        <h2 style="font-size:18px;margin:0;color:var(--accent-deep);">Task Matrix Overview</h2>
+        <h2 style="font-size:18px;margin:0;color:var(--accent-deep);">Task Overview</h2>
         <button class="btn btn-fill" id="open-add-task-btn" style="padding:8px 16px;font-size:13px;">➕ Add Task (เพิ่มงานใหม่)</button>
       </div>
 
       ${filterRow}
       ${progressBar}
-      
+
       <div id="result-capture" style="background:#FAF8F4;padding:8px;border-radius:12px;">
         <div class="grid">${cards}</div>
         <div class="footer-note">
-          This framework is based on <a href="https://asana.com/resources/eisenhower-matrix" target="_blank" rel="noreferrer">The Eisenhower Matrix</a> (อ้างอิงจาก Eisenhower Matrix)
+          This framework is based on The Eisenhower Matrix (อ้างอิงจาก Eisenhower Matrix)
         </div>
       </div>
-      
+
       <div class="actions">
         <button class="btn btn-fill" id="save-btn" ${state.saving ? "disabled" : ""}>⬇ ${state.saving ? "Saving... (กำลังบันทึก)" : "Save as image (เซฟเป็นรูป)"}</button>
         <button class="btn btn-outline" id="reset-btn">↺ Start over (เริ่มใหม่)</button>
@@ -788,6 +915,7 @@ function renderResult() {
       <div class="tip">✨ Start with quick wins due soonest (เริ่มจากงานเร็วที่ใกล้วันที่สุดก่อน)</div>
 
       ${addTaskModal}
+      ${editTaskModal}
     </div>
   `;
 }
@@ -901,10 +1029,15 @@ function attachEvents() {
   });
 
   document.querySelectorAll("[data-toggle-complete]").forEach(cb => {
+    cb.addEventListener("click", (e) => e.stopPropagation());
     cb.addEventListener("change", () => {
       const taskId = cb.getAttribute("data-toggle-complete");
       toggleTaskComplete(taskId);
     });
+  });
+
+  document.querySelectorAll("[data-edit-task]").forEach(el => {
+    el.addEventListener("click", () => openEditModal(el.getAttribute("data-edit-task")));
   });
 
   const dateInput = document.getElementById("date-input");
@@ -981,6 +1114,49 @@ function attachEvents() {
       });
 
       showToast("Added new task successfully! (เพิ่มงานใหม่เรียบร้อยแล้ว)");
+    });
+  }
+
+  // Edit Task modal handlers
+  const closeEditBtn = document.getElementById("close-edit-modal-btn");
+  if (closeEditBtn) closeEditBtn.addEventListener("click", closeEditModal);
+
+  const editBackdrop = document.getElementById("edit-modal-backdrop");
+  if (editBackdrop) {
+    editBackdrop.addEventListener("click", (e) => {
+      if (e.target.id === "edit-modal-backdrop") closeEditModal();
+    });
+  }
+
+  const deleteEditBtn = document.getElementById("delete-edit-task-btn");
+  if (deleteEditBtn) {
+    deleteEditBtn.addEventListener("click", () => {
+      if (state.editingTaskId) deleteTask(state.editingTaskId);
+    });
+  }
+
+  const confirmEditBtn = document.getElementById("confirm-edit-task-btn");
+  if (confirmEditBtn) {
+    confirmEditBtn.addEventListener("click", () => {
+      const textInput = document.getElementById("edit-task-text");
+      const catSelect = document.getElementById("edit-task-cat");
+      const quadSelect = document.getElementById("edit-task-quad");
+      const dSelect = document.getElementById("edit-task-deadline");
+      const efSelect = document.getElementById("edit-task-effort");
+
+      const text = textInput ? textInput.value.trim() : "";
+      if (!text) {
+        showToast("Please enter task name (กรุณาระบุชื่องาน)");
+        return;
+      }
+
+      saveEditedTask(state.editingTaskId, {
+        text,
+        categoryId: catSelect.value,
+        quadrant: quadSelect.value,
+        deadlineKey: dSelect.value,
+        effortKey: efSelect.value,
+      });
     });
   }
 }
