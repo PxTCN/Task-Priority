@@ -80,6 +80,15 @@
   }
   .task-draggable:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.06); }
   .task-draggable:active { cursor: grabbing; }
+  .details-toggle {
+    font-size: 10.5px; color: var(--accent-deep); cursor: pointer; white-space: nowrap; padding: 2px 6px;
+    border-radius: 999px; background: rgba(124,152,133,0.1); flex-shrink: 0;
+  }
+  .details-toggle:hover { background: rgba(124,152,133,0.2); }
+  .dump-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .dump-row .form-input { margin-bottom: 0; }
+  .row-remove-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 4px 6px; flex-shrink: 0; }
+  .row-remove-btn:hover { color: #8C3F58; }
 
   .add-cat-btn {
     display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px dashed var(--accent);
@@ -246,8 +255,10 @@ function getDeadlinePresets() {
   ];
 }
 
+let rowIdCounter = 0;
 let state = {
   stage: "dump", // "dump" | "categorize" | "sorting" | "result"
+  dumpRows: [], // populated below, [{id, text, details}]
   tasks: [], // { id, text, categoryId }
   categories: [...DEFAULT_CATEGORIES],
   index: 0,
@@ -261,9 +272,11 @@ let state = {
   saving: false,
   categoryFilter: null,
   selectedTaskIdMobile: null, // For mobile tap-to-assign
+  expandedDetailsIds: [], // Task ids with the details panel expanded (categorize screen)
   showAddTaskModal: false, // Control for quick add modal on result screen
   editingTaskId: null, // Control for edit-task modal on result screen
 };
+state.dumpRows = [makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
 
 function setState(patch) {
   state = { ...state, ...patch };
@@ -297,24 +310,67 @@ function classify(important, urgent, soloSkill) {
   return { quadrant: "delete", timeDrain: false };
 }
 
+function makeEmptyRow() {
+  rowIdCounter += 1;
+  return { id: `row-${rowIdCounter}-${Date.now()}`, text: "", details: "" };
+}
+
+function addDumpRowAfter(afterId) {
+  const idx = state.dumpRows.findIndex(r => r.id === afterId);
+  const newRow = makeEmptyRow();
+  const rows = [...state.dumpRows];
+  if (idx === -1) rows.push(newRow);
+  else rows.splice(idx + 1, 0, newRow);
+  setState({ dumpRows: rows });
+  const el = document.querySelector(`[data-row-text="${newRow.id}"]`);
+  if (el) el.focus();
+}
+
+function removeDumpRow(id) {
+  let rows = state.dumpRows.filter(r => r.id !== id);
+  if (rows.length === 0) rows = [makeEmptyRow()];
+  setState({ dumpRows: rows, expandedDetailsIds: state.expandedDetailsIds.filter(eid => eid !== id) });
+}
+
+function updateDumpRowText(id, value) {
+  const row = state.dumpRows.find(r => r.id === id);
+  if (row) row.text = value;
+}
+
+function updateDumpRowDetails(id, value) {
+  const row = state.dumpRows.find(r => r.id === id);
+  if (row) row.details = value;
+}
+
 function startCategorizing() {
-  const ta = document.getElementById("dump-input");
-  const raw = ta ? ta.value : "";
-  const list = raw.split("\n").map(t => t.trim()).filter(Boolean).map((line, i) => ({
-    id: `task-${Date.now()}-${i}`,
-    text: line,
-    categoryId: "cat-uncategorized"
-  }));
+  const list = state.dumpRows
+    .filter(r => r.text && r.text.trim())
+    .map(r => ({
+      id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      text: r.text.trim(),
+      categoryId: "cat-uncategorized",
+      details: r.details || "",
+    }));
   if (list.length === 0) {
     showToast("Please enter at least one task! (กรุณาระบุอย่างน้อย 1 งานครับ)");
     return;
   }
-  setState({ tasks: list, stage: "categorize", selectedTaskIdMobile: null });
+  setState({ tasks: list, stage: "categorize", selectedTaskIdMobile: null, expandedDetailsIds: [] });
 }
 
 function assignTaskCategory(taskId, categoryId) {
   const updated = state.tasks.map(t => t.id === taskId ? { ...t, categoryId } : t);
   setState({ tasks: updated, selectedTaskIdMobile: null });
+}
+
+function toggleDetailsPanel(taskId) {
+  const isOpen = state.expandedDetailsIds.includes(taskId);
+  const updated = isOpen ? state.expandedDetailsIds.filter(id => id !== taskId) : [...state.expandedDetailsIds, taskId];
+  setState({ expandedDetailsIds: updated });
+}
+
+function updateTaskDetails(taskId, value) {
+  state.tasks = state.tasks.map(t => t.id === taskId ? { ...t, details: value } : t);
 }
 
 function addNewCategoryPrompt() {
@@ -421,6 +477,7 @@ function saveEditedTask(taskId, changes) {
       quadrant: changes.quadrant,
       deadline: deadlineObj,
       effort: effortObj,
+      details: changes.details || "",
     };
   });
   setState({ results: updated, editingTaskId: null });
@@ -484,11 +541,12 @@ function skipScheduling() { finalizeAll(state.draft, null, null); }
 
 function resetApp() {
   setState({
-    stage: "dump", tasks: [], results: [], index: 0, qStep: 0,
+    stage: "dump", dumpRows: [makeEmptyRow(), makeEmptyRow(), makeEmptyRow()], tasks: [], results: [], index: 0, qStep: 0,
     categories: [...DEFAULT_CATEGORIES],
     pending: { important: null, urgent: null }, draft: null,
     chosenDeadline: undefined, tempEffort: undefined, customDatePick: "",
     categoryFilter: null, selectedTaskIdMobile: null, showAddTaskModal: false, editingTaskId: null,
+    expandedDetailsIds: [],
   });
 }
 
@@ -563,21 +621,38 @@ function renderDump() {
     </span>`
   ).join(" ");
 
+  const rowsHtml = state.dumpRows.map((row, idx) => {
+    const isExpanded = state.expandedDetailsIds.includes(row.id);
+    return `
+      <div class="dump-row">
+        <input type="text" class="form-input dump-row-text" data-row-text="${row.id}" value="${escapeHtml(row.text)}" placeholder="Task ${idx + 1}... (e.g. Send Q3 report)">
+        <span class="details-toggle" data-toggle-details="${row.id}">${row.details ? "📝 " : ""}${isExpanded ? "▲" : "▼"} Details</span>
+        <button class="row-remove-btn" data-remove-row="${row.id}" title="Remove">✕</button>
+      </div>
+      ${isExpanded ? `
+        <textarea class="form-input" data-details-input="${row.id}" rows="2" style="margin:-2px 0 10px 0;font-size:12.5px;resize:vertical;" placeholder="e.g.&#10;English subject&#10;Chinese subject">${escapeHtml(row.details)}</textarea>
+      ` : ""}
+    `;
+  }).join("");
+
   return `
     <div class="fade-in">
       <div class="card">
         <div style="margin-bottom:14px;">
           <div style="font-size:12px;font-weight:600;color:var(--accent-deep);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Step 1: Brain Dump (ขั้นตอนที่ 1: เทงานออกจากหัว)</div>
           <div class="helper" style="margin-bottom:8px;">
-            Type all tasks on your mind below (one task per line). In the next step, you can drag & drop them into categories!
-            <br><span style="color:var(--text-muted);">(พิมพ์งานที่อยู่ในหัวลงในช่องด้านล่าง แล้วขั้นตอนถัดไปจะสามารถจัดแยกหมวดหมู่ได้ง่ายๆ ครับ)</span>
+            Type one task per box. Press Enter to add the next one, or tap "▼ Details" to add notes for that task right away.
+            <br><span style="color:var(--text-muted);">(พิมพ์งานทีละกล่อง กด Enter เพื่อเพิ่มกล่องถัดไป หรือกด "▼ Details" เพื่อใส่รายละเอียดของงานนั้นได้เลยตั้งแต่ตอนนี้)</span>
           </div>
           <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
             <span style="font-size:12px;color:var(--text-secondary);font-weight:500;">Default Categories (หมวดหมู่เริ่มต้น):</span>
             ${catBadges}
           </div>
         </div>
-        <textarea id="dump-input" rows="8" placeholder="e.g.&#10;Send Q3 sales report&#10;Buy groceries for dinner&#10;Review design mockups&#10;Schedule dental checkup"></textarea>
+
+        <div id="dump-rows">${rowsHtml}</div>
+        <button class="add-cat-btn" id="add-row-btn" style="margin-top:2px;">+ Add another task (เพิ่มงานอีกอัน)</button>
+
         <button class="btn btn-primary" id="start-btn">Next: Organize Categories (ขั้นตอนถัดไป: จัดหมวดหมู่) →</button>
       </div>
     </div>
@@ -587,12 +662,20 @@ function renderDump() {
 function renderCategorize() {
   const cols = state.categories.map(cat => {
     const tasksInCat = state.tasks.filter(t => t.categoryId === cat.id);
-    const tasksHtml = tasksInCat.map(t => `
-      <div class="task-draggable" draggable="true" data-task-id="${t.id}">
-        <span>${escapeHtml(t.text)}</span>
-        <span style="font-size:10px;color:var(--text-muted);">::</span>
+    const tasksHtml = tasksInCat.map(t => {
+      const isExpanded = state.expandedDetailsIds.includes(t.id);
+      return `
+      <div>
+        <div class="task-draggable" draggable="true" data-task-id="${t.id}">
+          <span>${escapeHtml(t.text)}</span>
+          <span class="details-toggle" data-toggle-details="${t.id}">${t.details ? "📝 " : ""}${isExpanded ? "▲" : "▼"} Details</span>
+        </div>
+        ${isExpanded ? `
+          <textarea class="form-input" data-details-input="${t.id}" rows="2" style="margin-top:4px;font-size:12.5px;resize:vertical;" placeholder="e.g.&#10;English subject&#10;Chinese subject">${escapeHtml(t.details || "")}</textarea>
+        ` : ""}
       </div>
-    `).join("");
+    `;
+    }).join("");
 
     return `
       <div class="cat-col" data-cat-id="${cat.id}">
@@ -612,7 +695,7 @@ function renderCategorize() {
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
             <h2 style="font-size:18px;margin:0;color:var(--accent-deep);">Organize Categories (จัดหมวดหมู่งาน)</h2>
-            <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px;">Drag tasks into categories or tap a task then select category. (ลากงานเข้าหมวด หรือแตะงานเพื่อเลือกย้าย)</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px;">Drag tasks into categories or tap a task then select category. Tap "▼ Details" to add notes. (ลากงานเข้าหมวด หรือแตะงานเพื่อเลือกย้าย กด "▼ Details" เพื่อเพิ่มรายละเอียด)</div>
           </div>
           <button class="add-cat-btn" id="add-cat-btn">+ Add Category (เพิ่มหมวดหมู่)</button>
         </div>
@@ -717,6 +800,7 @@ function renderSorting() {
           <div class="q-progress">Task ${state.index + 1} of ${state.tasks.length} (งานที่ ${state.index + 1} จาก ${state.tasks.length})</div>
           <div class="q-task">
             ${escapeHtml(task.text)}
+            ${task.details ? `<ul style="text-align:left;display:inline-block;margin:6px auto 0;padding-left:18px;font-size:12.5px;font-weight:400;color:var(--text-secondary);">${task.details.split("\n").filter(Boolean).map(d => `<li>${escapeHtml(d)}</li>`).join("")}</ul>` : ""}
             <div style="margin-top:8px;"><span style="font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;background:${catObj.bg};color:${catObj.text};">${catObj.icon} ${escapeHtml(catObj.name)}</span></div>
           </div>
           ${block}
@@ -764,6 +848,7 @@ function renderResult() {
       : items.map(item => {
         const catStyle = categoryStyle(item.categoryId);
         const isDone = !!item.completed;
+        const detailLines = (item.details || "").split("\n").map(d => d.trim()).filter(Boolean);
         return `
         <div class="item ${isDone ? "completed" : ""}" data-edit-task="${item.id}">
           <div class="item-top">
@@ -773,6 +858,11 @@ function renderResult() {
             </div>
             ${item.deadline ? `<span class="badge" style="background:${meta.fill};color:${meta.text}">${escapeHtml(item.deadline.label.split(" (")[0])}</span>` : ""}
           </div>
+          ${detailLines.length > 0 ? `
+            <ul style="margin:4px 0 0 0;padding-left:42px;font-size:11.5px;color:${meta.text};opacity:0.85;list-style:disc;">
+              ${detailLines.map(d => `<li>${escapeHtml(d)}</li>`).join("")}
+            </ul>
+          ` : ""}
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;padding-left:26px;">
             ${item.effort ? `<div class="item-effort">${item.effort.icon} ${escapeHtml(item.effort.label.split(" (")[0])}</div>` : ""}
             <div style="font-size:10px;font-weight:500;padding:1px 8px;border-radius:999px;background:${catStyle.bg};color:${catStyle.text};">${item.categoryIcon} ${escapeHtml(item.categoryName)}</div>
@@ -882,6 +972,12 @@ function renderResult() {
           </select>
         </div>
 
+        <div class="form-group">
+          <label class="form-label">Details / Sub-items (รายละเอียด - ไม่บังคับ)</label>
+          <textarea id="edit-task-details" class="form-input" rows="3" style="resize:vertical;" placeholder="e.g.&#10;English subject&#10;Chinese subject">${escapeHtml(editingTask.details || "")}</textarea>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">One item per line — shown as a bullet list under the task (พิมพ์บรรทัดละหนึ่งข้อ จะโชว์เป็น bullet ใต้งานนั้น)</div>
+        </div>
+
         <div style="display:flex;gap:10px;margin-top:20px;">
           <button class="btn btn-fill" id="confirm-edit-task-btn" style="flex:1;">Save changes (บันทึกการแก้ไข)</button>
           <button class="btn btn-outline" id="close-edit-modal-btn" style="flex:1;">Cancel (ยกเลิก)</button>
@@ -979,6 +1075,46 @@ function attachEvents() {
       if (state.selectedTaskIdMobile && catId) assignTaskCategory(state.selectedTaskIdMobile, catId);
     });
   });
+
+  document.querySelectorAll("[data-toggle-details]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleDetailsPanel(el.getAttribute("data-toggle-details"));
+    });
+  });
+
+  document.querySelectorAll("[data-details-input]").forEach(el => {
+    el.addEventListener("click", (e) => e.stopPropagation());
+    el.addEventListener("input", (e) => {
+      const id = el.getAttribute("data-details-input");
+      if (state.stage === "dump") updateDumpRowDetails(id, e.target.value);
+      else updateTaskDetails(id, e.target.value);
+    });
+  });
+
+  document.querySelectorAll("[data-row-text]").forEach(el => {
+    el.addEventListener("input", (e) => {
+      updateDumpRowText(el.getAttribute("data-row-text"), e.target.value);
+    });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addDumpRowAfter(el.getAttribute("data-row-text"));
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-remove-row]").forEach(el => {
+    el.addEventListener("click", () => removeDumpRow(el.getAttribute("data-remove-row")));
+  });
+
+  const addRowBtn = document.getElementById("add-row-btn");
+  if (addRowBtn) {
+    addRowBtn.addEventListener("click", () => {
+      const lastId = state.dumpRows.length > 0 ? state.dumpRows[state.dumpRows.length - 1].id : null;
+      addDumpRowAfter(lastId);
+    });
+  }
 
   // Sorting handlers
   document.querySelectorAll("[data-quad]").forEach(el => {
@@ -1143,6 +1279,7 @@ function attachEvents() {
       const quadSelect = document.getElementById("edit-task-quad");
       const dSelect = document.getElementById("edit-task-deadline");
       const efSelect = document.getElementById("edit-task-effort");
+      const detailsInput = document.getElementById("edit-task-details");
 
       const text = textInput ? textInput.value.trim() : "";
       if (!text) {
@@ -1156,6 +1293,7 @@ function attachEvents() {
         quadrant: quadSelect.value,
         deadlineKey: dSelect.value,
         effortKey: efSelect.value,
+        details: detailsInput ? detailsInput.value : "",
       });
     });
   }
